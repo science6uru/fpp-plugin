@@ -1,0 +1,42 @@
+version: '3'
+services:
+  wordpress:
+    build: ./
+
+    # Overrides default command so things don't shut down after the process ends.
+    # command: sleep infinity
+    command: apache2-foreground
+
+    # Runs app on the same network as the database container, allows "forwardPorts" in devcontainer.json function.
+    network_mode: service:db
+    depends_on:
+      - db
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wp_user
+      WORDPRESS_DB_PASSWORD: wp_pass
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DEBUG: 1
+    volumes:
+      - ../..:/workspaces:cached
+      # - wordpress:/var/www/html
+      - ../src/:/var/www/html/wp-content/plugins/plugin-dev
+ 
+  db:
+    image: mariadb:10.4
+    restart: unless-stopped
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: mariadb
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wp_user
+      MYSQL_PASSWORD: wp_pass
+      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+
+    # ports:
+    #   - 8088:8088
+    #   - 3306:3306
+
+volumes:
+  mariadb-data:
