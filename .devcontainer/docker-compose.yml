@@ -28,11 +28,25 @@ services:
     volumes:
       - mariadb-data:/var/lib/mysql
     environment:
+      MARIADB_ROOT_PASSWORD: mariadb
+      MARIADB_DATABASE: wordpress
+      MARIADB_USER: wp_user
+      MARIADB_PASSWORD: wp_pass
+      # MARIADB_RANDOM_ROOT_PASSWORD: '1'
+
+  myadmin:
+    image: phpmyadmin:latest
+    restart: unless-stopped
+    environment:
       MYSQL_ROOT_PASSWORD: mariadb
-      MYSQL_DATABASE: wordpress
       MYSQL_USER: wp_user
       MYSQL_PASSWORD: wp_pass
-      MYSQL_RANDOM_ROOT_PASSWORD: '1'
+      PMA_HOST: db
+      APACHE_PORT: 8082
+      # PMA_ARBITRARY: 1
+    network_mode: service:db
+  
+
 
     # ports:
     #   - 8088:8088

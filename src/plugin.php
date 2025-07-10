@@ -1,24 +1,27 @@
 <?php
 /*
-Plugin Name: Test Plugin
-Description: DevContainer Sample Plugin
+Plugin Name: FPP
+Description: Fixed-Point Photography Time Lapse
 Version: 1.0
-Author: You
+Author: Andrew Owen
 License: GPLv2 or later
 */
+require("plugin-admin.php");
+require("plugin-activation.php");
 
-function add_my_custom_page() {
-  $my_post = array(
-    'post_title'    => 'My Custom Page',
-    'post_content'  => 'This is a custom page created by a plugin.',
-    'post_status'   => 'publish',
-    'post_author'   => 1,
-    'post_type'     => 'page',
-  );
-  $res = wp_insert_post( $my_post );
-  is_wp_error(($res));
-}
-register_activation_hook( __FILE__, 'add_my_custom_page' );
+
+// function add_my_custom_page() {
+//   $my_post = array(
+//     'post_title'    => 'My Custom Page',
+//     'post_content'  => 'This is a custom page created by a plugin.',
+//     'post_status'   => 'publish',
+//     'post_author'   => 1,
+//     'post_type'     => 'page',
+//   );
+//   $res = wp_insert_post( $my_post );
+//   is_wp_error(($res))
+// }
+// register_activation_hook( __FILE__, 'add_my_custom_page' );
 
 // function delete_my_custom_page() {
 //     $my_post = array(

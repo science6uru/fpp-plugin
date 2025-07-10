@@ -16,7 +16,8 @@
 	"forwardPorts": [
 		8088,
 		3306,
-		8081
+		8081,
+		8082
 	],
 	"portsAttributes": {
 		"3306": {
