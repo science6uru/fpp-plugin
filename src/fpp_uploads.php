@@ -2,19 +2,22 @@
 /** Handle the user uploads */
 function fpp_process_upload(WP_REST_Request $request)
 {
-   $request_body = $request->get_body_params();
-   if(update_post_meta( $request_body['post_id'], 'post_data', $request_body ))
-   {
-      $response = new WP_REST_Response(array('message'=>'Successful'));
-      $response->set_status(200);
-      return $response;
-   }
-   else{
-        return new WP_Error('invalid_request', 'Something went wrong', array('status'=>403));
-   }
+   // $request_body = $request->get_body_params();
+   // if(update_post_meta( $request_body['post_id'], 'post_data', $request_body ))
+   // {
+   //    $response = new WP_REST_Response(array('message'=>'Successful'));
+   //    $response->set_status(200);
+   //    return $response;
+   // }
+   // else{
+   //      return new WP_Error('invalid_request', 'Something went wrong', array('status'=>403));
+   // }
+
+   //return new WP_REST_Response(array('message'=>'Upload received', 'user_photo'=>$request['user_photo']));
+   return new WP_REST_Response($request->get_header('Referer'));
 
   // You can access parameters via direct array access on the object:
-  $param = $request['some_param'];
+  $param = $request['user_photo'];
 
   // Or via the helper method:
   $param = $request->get_param( 'some_param' );
@@ -53,6 +56,5 @@ function fpp_register_routes(){
         ),
    ));
 }
-add_action('rest_api_init', 'register_my_route');
-
+add_action('rest_api_init', 'fpp_register_routes');
 ?>
