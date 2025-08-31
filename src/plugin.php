@@ -8,6 +8,8 @@ License: GPLv2 or later
 */
 require("plugin-admin.php");
 require("plugin-activation.php");
+require("plugin-shortcodes.php");
+require("fpp_uploads.php");
 
 
 // function add_my_custom_page() {
