@@ -13,8 +13,17 @@ function fpp_process_upload(WP_REST_Request $request)
    //      return new WP_Error('invalid_request', 'Something went wrong', array('status'=>403));
    // }
 
-   //return new WP_REST_Response(array('message'=>'Upload received', 'user_photo'=>$request['user_photo']));
-   return new WP_REST_Response($request->get_header('Referer'));
+   $uploadedfile = $_FILES['user_photo'];
+   $upload_overrides = array( 'test_form' => false );
+   $movefile = wp_handle_upload( $uploadedfile, $upload_overrides );
+
+   if ( $movefile && ! isset( $movefile['error'] ) ) {
+       return new WP_REST_Response(array('message'=>'Upload received', 'user_photo'=>$movefile['file']));
+   } else {
+       return new WP_Error('upload_error', $movefile['error'], array('status'=>400));
+   }
+   //return new WP_REST_Response($request->get_header('Referer'));
+
 
   // You can access parameters via direct array access on the object:
   $param = $request['user_photo'];
@@ -54,7 +63,8 @@ function fpp_register_routes(){
                 }
             ),
         ),
-   ));
+   )); 
 }
+
 add_action('rest_api_init', 'fpp_register_routes');
 ?>
