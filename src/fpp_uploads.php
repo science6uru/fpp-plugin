@@ -1,7 +1,13 @@
 <?php 
+
+if (!function_exists('wp_handle_upload')) {
+    require_once(ABSPATH . 'wp-admin/includes/file.php');
+}
+
 /** Handle the user uploads */
 function fpp_process_upload(WP_REST_Request $request)
 {
+/*
    // $request_body = $request->get_body_params();
    // if(update_post_meta( $request_body['post_id'], 'post_data', $request_body ))
    // {
@@ -13,20 +19,50 @@ function fpp_process_upload(WP_REST_Request $request)
    //      return new WP_Error('invalid_request', 'Something went wrong', array('status'=>403));
    // }
 
-   $uploadedfile = $_FILES['user_photo'];
-   $upload_overrides = array( 'test_form' => false );
-   $movefile = wp_handle_upload( $uploadedfile, $upload_overrides );
 
-   if ( $movefile && ! isset( $movefile['error'] ) ) {
-       return new WP_REST_Response(array('message'=>'Upload received', 'user_photo'=>$movefile['file']));
-   } else {
-       return new WP_Error('upload_error', $movefile['error'], array('status'=>400));
-   }
-   //return new WP_REST_Response($request->get_header('Referer'));
+    //return new WP_REST_Response($request->get_header('Referer'));
+*/
 
+    $uploaded_file = $_FILES['user_photo'];
+    if ($uploaded_file['error'] !== UPLOAD_ERR_OK) {
+        return new WP_REST_Response('Upload error: ' . $uploaded_file['error']);
+    }
 
-  // You can access parameters via direct array access on the object:
-  $param = $request['user_photo'];
+    $overrides = array(
+        'test_form' => false,
+        'test_type' => true,
+        'mimes' => array(
+            'jpg|jpeg|jpe' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'png' => 'image/png',
+            'bmp' => 'image/bmp',
+            'tif|tiff' => 'image/tiff',
+            'ico' => 'image/x-icon',
+            'heic' => 'image/heic',
+        ),
+    );
+
+    $upload_result = wp_handle_upload($uploaded_file, $overrides);
+
+    if ($upload_result && !isset($upload_result['error'])) {
+        // Success: File is moved to uploads dir
+        return new WP_REST_Response(array(
+            'message' => 'File uploaded successfully!',
+            'path' => $upload_result['file'],
+            'url' => $upload_result['url'],
+            'type' => $upload_result['type'],
+        ), 200);
+    } else {
+        // Failure for whatever reason
+        return new WP_REST_Response(array(
+            'error' => $upload_result['error'],
+        ), 400);
+    }
+    
+/*
+
+    // You can access parameters via direct array access on the object:
+    $param = $request['user_photo'];
 
   // Or via the helper method:
   $param = $request->get_param( 'some_param' );
@@ -48,6 +84,7 @@ function fpp_process_upload(WP_REST_Request $request)
   # new file name needs to be generated and unique
   #   look into uuid for filenames and maybe organize them by station directories
   # see. https://www.php.net/manual/en/features.file-upload.post-method.php
+*/
 }
 
 /** Function to register the upload route */

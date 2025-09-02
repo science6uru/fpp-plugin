@@ -5,4 +5,3 @@ This is the fpp_upload page <?=$station_id?>
   <input type="file" id="file-upload" name="user_photo" required>
   <button type="submit">Upload File</button>
 </form>
-
