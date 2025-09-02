@@ -3,7 +3,7 @@
 Plugin Name: FPP
 Description: Fixed-Point Photography Time Lapse
 Version: 1.0
-Author: Andrew Owen
+Author: Science6uru
 License: GPLv2 or later
 */
 require("plugin-admin.php");
