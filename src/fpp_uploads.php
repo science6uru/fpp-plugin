@@ -43,22 +43,21 @@ function fpp_process_upload(WP_REST_Request $request)
     );
 
     $upload_result = wp_handle_upload($uploaded_file, $overrides);
-
-    $attachment = array(
-        'guid'           => $upload_result['url'],
-        'post_mime_type' => $upload_result['type'],
-        'post_title'     => basename($upload_result['file']),
-        'post_content'   => '',
-        'post_status'    => 'inherit'
-    );
-    $attach_id = wp_insert_attachment($attachment, $upload_result['file'], 0);
-    // Generate metadata
-    require_once(ABSPATH . 'wp-admin/includes/image.php');
-    $attach_data = wp_generate_attachment_metadata($attach_id, $upload_result['file']);
-    wp_update_attachment_metadata($attach_id, $attach_data);
-
     if ($upload_result && !isset($upload_result['error'])) {
         // Success: File is moved to uploads dir
+
+        $attachment = array(
+            'guid'           => $upload_result['url'],
+            'post_mime_type' => $upload_result['type'],
+            'post_title'     => basename($upload_result['file']),
+            'post_content'   => '',
+            'post_status'    => 'inherit'
+        );
+        $attach_id = wp_insert_attachment($attachment, $upload_result['file'], 0);
+        // Generate metadata
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        $attach_data = wp_generate_attachment_metadata($attach_id, $upload_result['file']);
+        wp_update_attachment_metadata($attach_id, $attach_data);
         return new WP_REST_Response(array(
             'message' => 'File uploaded successfully!',
             'path' => $upload_result['file'],
