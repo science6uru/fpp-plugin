@@ -1,3 +1,27 @@
+# Fixed Point Photography Plugin for Wordpress
+
+This is a Wordpress plugin built for the Spring Creek Forest Preservation Society as part of my Eagle Project. While it is for the SCFPS, any nature preservation society with a wordpress website may use this plugin to power any fixed point photography stations throughout their preserves.
+
+## Use
+
+The plugin works by providing shortcodes that you may place on a webpage that users may upload photos from. Ideally, there will be QR codes at every station pointing to its unique upload page so that the images do not get mixed from multiple photo spots. 
+<br> 
+<br>
+Uploaded images will be sent to the server and await moderation/approval by an admin before becoming publicly viewable or becoming a part of the timelapse. 
+<br>
+<br>
+This README is a work in progress not finished...
+
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+<br/>
+
 # vscode-devcontainer-wordpress
 
 This contains the configuration necessary for setting up WordPress development using VSCode Dev Containers.
