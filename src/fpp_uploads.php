@@ -28,9 +28,15 @@ function fpp_process_upload(WP_REST_Request $request)
         return new WP_REST_Response('Upload error: ' . $uploaded_file['error']);
     }
 
+    function generate_filename_callback($dir, $name, $ext) {
+        $unique_name = wp_unique_filename( $dir, $name );
+        return $unique_name;
+    }
+
     $overrides = array(
         'test_form' => false,
         'test_type' => true,
+        'unique_filename_callback' => 'generate_filename_callback',
         'mimes' => array(
             'jpg|jpeg|jpe' => 'image/jpeg',
             'gif' => 'image/gif',
@@ -41,6 +47,7 @@ function fpp_process_upload(WP_REST_Request $request)
             'heic' => 'image/heic',
         ),
     );
+    
 
     $upload_result = wp_handle_upload($uploaded_file, $overrides);
     if ($upload_result && !isset($upload_result['error'])) {
@@ -54,6 +61,9 @@ function fpp_process_upload(WP_REST_Request $request)
             'post_status'    => 'inherit'
         );
         $attach_id = wp_insert_attachment($attachment, $upload_result['file'], 0);
+
+        
+
         // Generate metadata
         require_once(ABSPATH . 'wp-admin/includes/image.php');
         $attach_data = wp_generate_attachment_metadata($attach_id, $upload_result['file']);
