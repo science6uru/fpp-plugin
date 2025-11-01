@@ -5,8 +5,36 @@ if (!function_exists('wp_handle_upload')) {
 }
 
 /** Handle the user uploads */
-function fpp_process_upload(WP_REST_Request $request)
-{
+function fpp_process_upload(WP_REST_Request $request) {
+    $secret_key = get_option('fpp_recaptcha_secret_key');
+
+    // Only verify if secret key is configured
+    if (!empty($secret_key)) {
+        $recaptcha_response = $request->get_param('g-recaptcha-response');
+        if (empty($recaptcha_response)) {
+            return new WP_REST_Response(array('error' => 'reCAPTCHA token is missing.'), 400);
+        }
+
+        $verify_response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
+            'body' => array(
+                'secret' => $secret_key,
+                'response' => $recaptcha_response,
+                'remoteip' => $_SERVER['REMOTE_ADDR'],
+            ),
+        ));
+
+        if (is_wp_error($verify_response)) {
+            return new WP_REST_Response(array('error' => 'reCAPTCHA verification failed: ' . $verify_response->get_error_message()), 400);
+        }
+
+        $response_body = json_decode(wp_remote_retrieve_body($verify_response));
+
+        if (!$response_body->success || $response_body->score < 0.5) {  // Adjust threshold as needed
+            return new WP_REST_Response(array('error' => 'reCAPTCHA verification failed (low score). Please try again.'), 400);
+        }
+
+        // if ($response_body->action !== 'upload_photo') { ... }
+    }
 /*
    // $request_body = $request->get_body_params();
    // if(update_post_meta( $request_body['post_id'], 'post_data', $request_body ))
@@ -99,7 +127,7 @@ function fpp_process_upload(WP_REST_Request $request)
 */
 }
 
-/** Function to register the upload route */
+/** Register the upload route */
 function fpp_register_routes(){
    register_rest_route('fpp/v1', '/photo_upload/(?P<id>\d+)', array(
         'methods'=>'POST',
