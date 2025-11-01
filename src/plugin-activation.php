@@ -5,59 +5,59 @@ global $fpp_photos;
 global $fpp_stations;
 global $wpdb;
 
-$fpp_db_version = '1.0';
+$fpp_db_version = '1.1';
 $fpp_photos = $wpdb->prefix . 'fpp_photos';
 $fpp_stations = $wpdb->prefix . 'fpp_stations';
 
 function fpp_install_data() {
-	global $wpdb, $fpp_stations;
+    global $wpdb, $fpp_stations;
 
-	$station_array = [1, 2, 3];
-	foreach($station_array as $station_id) {
-		$station = $wpdb->get_row("SELECT * FROM $fpp_stations where id = $station_id");
-		if (! $station) {
-			$wpdb->insert( 
-				$fpp_stations, 
-				array( 
-					'id' => $station_id, 
-					'name' => "FPP Station $station_id", 
-				) 
-			);
-		}
-	}
+    $station_array = [1, 2, 3];
+    foreach($station_array as $station_id) {
+        $station = $wpdb->get_row("SELECT * FROM $fpp_stations where id = $station_id");
+        if (! $station) {
+            $wpdb->insert( 
+                $fpp_stations, 
+                array( 
+                    'id' => $station_id, 
+                    'name' => "FPP Station $station_id", 
+                ) 
+            );
+        }
+    }
 }
 
 function fpp_install() {
-	global $wpdb;
-	global $fpp_db_version, $fpp_photos, $fpp_stations;
+    global $wpdb;
+    global $fpp_db_version, $fpp_photos, $fpp_stations;
 
-	$charset_collate = $wpdb->get_charset_collate();
+    $charset_collate = $wpdb->get_charset_collate();
 
-	$photos_sql = "CREATE TABLE $fpp_photos (
-		id int NOT NULL AUTO_INCREMENT,
-		station tinyint NOT NULL,
-		ip varchar(55) NOT NULL,
+    $photos_sql = "CREATE TABLE $fpp_photos (
+        id int NOT NULL AUTO_INCREMENT,
+        station_id int NOT NULL,
+        ip varchar(55) NOT NULL,
+        approved tinyint(1) NOT NULL DEFAULT 0,
+        rejected tinyint(1) NOT NULL DEFAULT 0,
         created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-		PRIMARY KEY  (id)
+        PRIMARY KEY  (id)
         ) ENGINE=InnoDB  $charset_collate;";
-		# TODO: Add foreign key constraint for station 
-		# TODO: Add approved/curated/include column
     
-	$stations_sql = "CREATE TABLE $fpp_stations (
-		id int NOT NULL AUTO_INCREMENT,
-		name VARCHAR(255),
-		lat DECIMAL(10, 8),
+    $stations_sql = "CREATE TABLE $fpp_stations (
+        id int NOT NULL AUTO_INCREMENT,
+        name VARCHAR(255),
+        lat DECIMAL(10, 8),
         lon DECIMAL(11, 8),
-		PRIMARY KEY  (id)
+        PRIMARY KEY  (id)
         ) ENGINE=InnoDB  $charset_collate;";
 
-	require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-	dbDelta( $photos_sql );
-	dbDelta( $stations_sql );
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    dbDelta( $stations_sql );
+    dbDelta( $photos_sql );
 
-	fpp_install_data();
-	add_option( 'fpp_db_version', $fpp_db_version );
+    fpp_install_data();
+    add_option( 'fpp_db_version', $fpp_db_version );
 }
 
 
@@ -78,14 +78,34 @@ function fpp_uninstall() {
     delete_option("fpp_db_version");
 }
 
+function version_specific_changes($from_version, $to_version) {
+    global $wpdb, $fpp_stations, $fpp_photos;
+
+    if ((float)$from_version < 1.1) {
+        $wpdb->query(
+            "ALTER TABLE ".$fpp_photos." ".
+            "ADD CONSTRAINT fk_station_id
+            FOREIGN KEY (station_id)
+            REFERENCES ".$fpp_stations."(id)
+            ON DELETE RESTRICT
+            ON UPDATE CASCADE;"
+        );
+        if ($wpdb->last_error) {
+            error_log("Foreign key constraint error: " . $wpdb->last_error);
+        }
+    }
+}
+
 register_uninstall_hook(__FILE__, 'fpp_uninstall');
 register_activation_hook(__FILE__, 'fpp_install');
 
 function fpp_update_db_check() {
     global $fpp_db_version;
-    if ( get_option( 'fpp_db_version' ) != $fpp_db_version ) {
+    $from_version = get_option( 'fpp_db_version');
+    if ( $from_version != $fpp_db_version ) {
         fpp_install();
-		update_option( 'fpp_db_version', $fpp_db_version );
+        version_specific_changes($from_version, $fpp_db_version);
+        update_option( 'fpp_db_version', $fpp_db_version );
 
     }
 }
