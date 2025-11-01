@@ -38,7 +38,7 @@ function fpp_admin_manage_render()
     global $title;
     $page_slug = $_GET['page'];
     $parts = explode('-', $page_slug);
-    $station_number = end($parts);
+    $station_id = end($parts);
 
     print '<div class="wrap">';
     print "<h1>$title</h1>";
