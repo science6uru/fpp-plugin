@@ -35,7 +35,9 @@ function fpp_process_upload(WP_REST_Request $request) {
 
         $response_body = json_decode(wp_remote_retrieve_body($verify_response));
 
-        if (!$response_body->success || $response_body->score < 0.5) {  // Adjust threshold as needed
+        $threshold = floatval( get_option( 'fpp_recaptcha_threshold', 0.5 ) );
+
+        if ( ! $response_body->success || ! isset( $response_body->score ) || $response_body->score < $threshold ) {
             return new WP_REST_Response(array('error' => 'reCAPTCHA verification failed (low score). Please try again.'), 400);
         }
 
