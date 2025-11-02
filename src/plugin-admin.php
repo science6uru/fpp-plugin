@@ -10,7 +10,6 @@
 add_action( 'admin_menu', 'fpp_admin_register' );
 
 function fpp_admin_register() {
-    // Main menu item
     add_menu_page(
         'FPP Plugin Admin',     // Page title
         'FPP Admin',            // Menu title
