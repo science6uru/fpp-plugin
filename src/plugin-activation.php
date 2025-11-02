@@ -56,10 +56,17 @@ function fpp_install() {
     dbDelta( $stations_sql );
     dbDelta( $photos_sql );
 
-    fpp_install_data();
-    add_option( 'fpp_db_version', $fpp_db_version );
+	fpp_install_data();
 }
 
+function ensure_default_options() {
+	if (get_option('fpp_images_base_dir', false) === false) {
+		add_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp_images');
+	}
+	if (get_option('fpp_db_version', false) === false) {
+		add_option('fpp_db_version', '0.0');
+	}
+}
 
 function delete_plugin_database_tables(){
     global $wpdb;
@@ -76,6 +83,7 @@ function delete_plugin_database_tables(){
 function fpp_uninstall() {
     delete_plugin_database_tables();
     delete_option("fpp_db_version");
+	delete_option("fpp_images_base_dir");
 }
 
 function version_specific_changes($from_version, $to_version) {
@@ -101,6 +109,7 @@ register_activation_hook(__FILE__, 'fpp_install');
 
 function fpp_update_db_check() {
     global $fpp_db_version;
+	ensure_default_options();
     $from_version = get_option( 'fpp_db_version');
     if ( $from_version != $fpp_db_version ) {
         fpp_install();

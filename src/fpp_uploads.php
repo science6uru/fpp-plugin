@@ -4,6 +4,12 @@ if (!function_exists('wp_handle_upload')) {
     require_once(ABSPATH . 'wp-admin/includes/file.php');
 }
 
+function gen_photo_upload_name( $dir, $name, $ext ) {
+    echo "Generating upload name ".get_option("fpp_images_base_dir")."for $name.$ext in dir $dir\n";
+    wp_mkdir_p($dir);
+    return $name;
+}
+
 /** Handle the user uploads */
 function fpp_process_upload(WP_REST_Request $request) {
     $secret_key = get_option('fpp_recaptcha_secret_key');
@@ -70,7 +76,22 @@ function fpp_process_upload(WP_REST_Request $request) {
         ),
     );
 
+    $overrides['unique_filename_callback'] = 'gen_photo_upload_name';
+
+    // Get station ID from route parameter
+    $station_id = $request->get_param('id');
+
+    // Apply filter to override upload path
+    add_filter('upload_dir', function($dirs) use ($station_id) {
+        $dirs['subdir'] = '/fpp-plugin/station-' . $station_id;
+        $dirs['path'] = $dirs['basedir'] . $dirs['subdir'];
+        $dirs['url']  = $dirs['baseurl'] . $dirs['subdir'];
+        return $dirs;
+    });
+
     $upload_result = wp_handle_upload($uploaded_file, $overrides);
+    remove_all_filters('upload_dir');
+
     if ($upload_result && !isset($upload_result['error'])) {
         // Success: File is moved to uploads dir
 
@@ -81,11 +102,6 @@ function fpp_process_upload(WP_REST_Request $request) {
             'post_content'   => '',
             'post_status'    => 'inherit'
         );
-        $attach_id = wp_insert_attachment($attachment, $upload_result['file'], 0);
-        // Generate metadata
-        require_once(ABSPATH . 'wp-admin/includes/image.php');
-        $attach_data = wp_generate_attachment_metadata($attach_id, $upload_result['file']);
-        wp_update_attachment_metadata($attach_id, $attach_data);
         return new WP_REST_Response(array(
             'message' => 'File uploaded successfully!',
             'path' => $upload_result['file'],
