@@ -67,6 +67,12 @@ function ensure_default_options() {
 	if (get_option('fpp_db_version', false) === false) {
 		add_option('fpp_db_version', '0.0');
 	}
+	if (get_option('fpp_recaptcha_threshold', false) === false) {
+		add_option('fpp_recaptcha_threshold', '0.5');
+	}
+	if (get_option('fpp_max_upload_size_mb', false) === false) {
+		add_option('fpp_max_upload_size_mb', '8.0');
+	}
 }
 
 function delete_plugin_database_tables(){
