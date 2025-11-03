@@ -58,6 +58,7 @@ function fpp_register_settings() {
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_site_key', 'sanitize_text_field' );
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_secret_key', 'sanitize_text_field' );
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_threshold', 'fpp_sanitize_recaptcha_threshold' );
+    register_setting( 'fpp_settings_group', 'fpp_max_upload_size_mb', 'fpp_sanitize_max_upload_size_mb' );
 
     add_settings_section(
         'fpp_recaptcha_section',
@@ -90,12 +91,40 @@ function fpp_register_settings() {
         'fpp_recaptcha_section',
         array( 'label_for' => 'fpp_recaptcha_threshold' )
     );
+
+    add_settings_field(
+        'fpp_max_upload_size_mb',
+        'Max Upload Size (MB)',
+        'fpp_max_upload_size_mb_callback',
+        'fpp-settings',
+        'fpp_recaptcha_section',
+        array( 'label_for' => 'fpp_max_upload_size_mb' )
+    );
 }
 
 function fpp_sanitize_recaptcha_threshold( $value ) {
-    $f = floatval( $value );
+    // If saved empty, use default 0.5
+    $trimmed = is_scalar( $value ) ? trim( (string) $value ) : '';
+    if ( $trimmed === '' ) {
+        return '0.5';
+    }
+
+    $f = floatval( $trimmed );
     if ( $f < 0.0 ) { $f = 0.0; }
     if ( $f > 1.0 ) { $f = 1.0; }
+    return (string) $f;
+}
+
+function fpp_sanitize_max_upload_size_mb( $value ) {
+    // If saved empty, use default 8 MB
+    $trimmed = is_scalar( $value ) ? trim( (string) $value ) : '';
+    if ( $trimmed === '' ) {
+        return '8';
+    }
+
+    $f = floatval( $trimmed );
+    if ( $f < 0.0 ) { $f = 0.0; }
+    if ( $f > 512.0 ) { $f = 512.0; }
     return (string) $f;
 }
 
@@ -115,8 +144,18 @@ function fpp_recaptcha_secret_key_callback() {
 
 function fpp_recaptcha_threshold_callback() {
     $value = get_option( 'fpp_recaptcha_threshold', '0.5' );
-    echo '<input type="number" step="0.01" min="0" max="1" id="fpp_recaptcha_threshold" name="fpp_recaptcha_threshold" value="' . esc_attr( $value ) . '" class="small-text" /> ';
-    echo '<span class="description">Score cutoff (0.0 - 1.0). Lower is more forgiving; higher is stricter. Default: 0.5.</span>';
+    // show default as placeholder (greyed out) when field is empty
+    echo '<input type="number" step="0.01" min="0" max="1" id="fpp_recaptcha_threshold" name="fpp_recaptcha_threshold" value="' . esc_attr( $value ) . '" placeholder="0.5" class="small-text" /> ';
+    echo '<span class="description">Score cutoff (0.0 - 1.0). Lower is more forgiving; higher is stricter.</span>';
+}
+
+function fpp_max_upload_size_mb_callback() {
+    $value = get_option( 'fpp_max_upload_size_mb', '8' ); // MB
+    $server_upload = ini_get('upload_max_filesize');
+    $server_post   = ini_get('post_max_size');
+    // show default as placeholder (greyed out) when field is empty
+    echo '<input type="number" step=".1" min="0" id="fpp_max_upload_size_mb" name="fpp_max_upload_size_mb" value="' . esc_attr( $value ) . '" placeholder="8" class="small-text" /> ';
+    echo '<span class="description">Does not affect PHP server upload limit. PHP server limit: ' . esc_html( $server_upload ) . 'B.</span>';
 }
 
 function fpp_settings_render() {

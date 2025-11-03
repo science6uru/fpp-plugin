@@ -38,9 +38,50 @@ function fpp_process_upload(WP_REST_Request $request) {
     $secret_key = get_option('fpp_recaptcha_secret_key');
     $uploaded_file = $_FILES['user_photo'];
 
-    if ($uploaded_file['error'] !== UPLOAD_ERR_OK) {
-        return new WP_REST_Response('Upload error: ' . $uploaded_file['error'], 500);
+    // better error handling
+    if ( ! isset( $uploaded_file ) || ! is_array( $uploaded_file ) ) {
+        return new WP_REST_Response( array( 'error' => 'No file uploaded.' ), 400 );
     }
+
+    if ( $uploaded_file['error'] !== UPLOAD_ERR_OK ) {
+        $code = $uploaded_file['error'];
+        $server_upload = ini_get('upload_max_filesize');
+        $server_post   = ini_get('post_max_size');
+
+        if ( $code === UPLOAD_ERR_INI_SIZE) {
+            $msg = sprintf(
+                'Uploaded file is too large. PHP limit: %s',
+                esc_html($server_upload)
+            );
+            return new WP_REST_Response( array( 'error' => $msg ), 400 );
+        }
+        
+        // Map for any other errors that might happen. 
+        $errors = array(
+            UPLOAD_ERR_PARTIAL => 'The uploaded file was only partially uploaded.',
+            UPLOAD_ERR_NO_FILE => 'No file was uploaded... (How did you get here???).',
+            UPLOAD_ERR_NO_TMP_DIR => 'Missing a temporary folder on the server.',
+            UPLOAD_ERR_CANT_WRITE => 'Failed to write file to disk.',
+            UPLOAD_ERR_EXTENSION => 'A PHP extension stopped the file upload.',
+        );
+        $msg = isset( $errors[$code] ) ? $errors[$code] : ( 'Upload error code: ' . intval( $code ) );
+        return new WP_REST_Response( array( 'error' => $msg ), 400 );
+    }
+
+    // Config maximum
+    $configured_mb = floatval( get_option( 'fpp_max_upload_size_mb', 5 ) );
+    if ( $configured_mb > 0 ) {
+        $configured_bytes = (int) round( $configured_mb * 1024 * 1024 );
+        if ( isset( $uploaded_file['size'] ) && $uploaded_file['size'] > $configured_bytes ) {
+            return new WP_REST_Response( array(
+                'error' => sprintf(
+                    'File exceeds maximum size of %s MB.',
+                    number_format( $configured_mb, 2, '.', '' )
+                )
+            ), 400 );
+        }
+    }
+
     $temp_file_path = $uploaded_file['tmp_name'];
     $metadata = wp_read_image_metadata( $temp_file_path );
     // Only verify if secret key is configured
