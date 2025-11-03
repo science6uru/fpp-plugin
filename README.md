@@ -4,7 +4,7 @@ This is a Wordpress plugin built for the Spring Creek Forest Preservation Societ
 
 ## Use
 
-The plugin works by providing shortcodes that you may place on a webpage that users may upload photos from. Ideally, there will be QR codes at every station pointing to its unique upload page so that the images do not get mixed from multiple photo spots. 
+The plugin works by providing shortcodes that you may place on a webpage that users may upload photos from. Ideally, there will be QR codes at every station pointing to its unique upload page so that the images do not get mixed from multiple photo spots. Each upload form is protected by Google reCAPTCHA v3; the API keys and detection threshold are configurable in the plugin admin settings.
 <br> 
 <br>
 Uploaded images will be sent to the server and await moderation/approval by an admin before becoming publicly viewable or becoming a part of the timelapse. 
