@@ -1,5 +1,3 @@
-This is the fpp_upload page <?=$station_id?>
-
 <?php
 $site_key = get_option('fpp_recaptcha_site_key');
 ?>

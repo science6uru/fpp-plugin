@@ -5,7 +5,7 @@ global $fpp_photos;
 global $fpp_stations;
 global $wpdb;
 
-$fpp_db_version = '1.1';
+$fpp_db_version = '1.2';
 $fpp_photos = $wpdb->prefix . 'fpp_photos';
 $fpp_stations = $wpdb->prefix . 'fpp_stations';
 
@@ -37,6 +37,7 @@ function fpp_install() {
         id int NOT NULL AUTO_INCREMENT,
         station_id int NOT NULL,
         ip varchar(55) NOT NULL,
+        file_name varchar(32) NOT NULL UNIQUE,
         approved tinyint(1) NOT NULL DEFAULT 0,
         rejected tinyint(1) NOT NULL DEFAULT 0,
         created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
