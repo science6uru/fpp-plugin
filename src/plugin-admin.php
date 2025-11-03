@@ -143,14 +143,14 @@ function fpp_recaptcha_secret_key_callback() {
 }
 
 function fpp_recaptcha_threshold_callback() {
-    $value = get_option( 'fpp_recaptcha_threshold', '0.5' );
+    $value = get_option( 'fpp_recaptcha_threshold', '0.0' );
     // show default as placeholder (greyed out) when field is empty
     echo '<input type="number" step="0.01" min="0" max="1" id="fpp_recaptcha_threshold" name="fpp_recaptcha_threshold" value="' . esc_attr( $value ) . '" placeholder="0.5" class="small-text" /> ';
     echo '<span class="description">Score cutoff (0.0 - 1.0). Lower is more forgiving; higher is stricter.</span>';
 }
 
 function fpp_max_upload_size_mb_callback() {
-    $value = get_option( 'fpp_max_upload_size_mb', '8' ); // MB
+    $value = get_option( 'fpp_max_upload_size_mb', '0.0' ); // MB
     $server_upload = ini_get('upload_max_filesize');
     $server_post   = ini_get('post_max_size');
     // show default as placeholder (greyed out) when field is empty

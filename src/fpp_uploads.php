@@ -69,7 +69,7 @@ function fpp_process_upload(WP_REST_Request $request) {
     }
 
     // Config maximum
-    $configured_mb = floatval( get_option( 'fpp_max_upload_size_mb', 5 ) );
+    $configured_mb = floatval( get_option( 'fpp_max_upload_size_mb', '0.0' ) );
     if ( $configured_mb > 0 ) {
         $configured_bytes = (int) round( $configured_mb * 1024 * 1024 );
         if ( isset( $uploaded_file['size'] ) && $uploaded_file['size'] > $configured_bytes ) {
@@ -105,7 +105,7 @@ function fpp_process_upload(WP_REST_Request $request) {
 
         $response_body = json_decode(wp_remote_retrieve_body($verify_response));
 
-        $threshold = floatval( get_option( 'fpp_recaptcha_threshold', 0.5 ) );
+        $threshold = floatval( get_option( 'fpp_recaptcha_threshold', '0.0' ) );
 
         if ( ! $response_body->success || ! isset( $response_body->score ) || $response_body->score < $threshold ) {
             return new WP_REST_Response(array('error' => 'reCAPTCHA verification failed (low score). Please try again.'), 400);
