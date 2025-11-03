@@ -152,7 +152,15 @@ function fpp_process_upload(WP_REST_Request $request) {
 
         if ($upload_result && !isset($upload_result['error'])) {
             // Success: File is moved to uploads dir
-            $wpdb->query('COMMIT');
+            $commit_result = $wpdb->query( 'COMMIT' );
+            if ( false === $commit_result ) {
+                // If COMMIT fails, explicitly rollback
+                $wpdb->query( 'ROLLBACK' );
+                error_log( 'wpdb: COMMIT failed, transaction rolled back.' );
+                return new WP_REST_Response(array(
+                    'error' => "Internal Server Error: Could not persist data",
+                ), 500);
+            }
             return new WP_REST_Response(array(
                 'message' => 'File uploaded successfully!',
                 'path' => $upload_result['file'],
