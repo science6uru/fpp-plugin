@@ -58,8 +58,10 @@ function fpp_register_settings() {
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_site_key', 'sanitize_text_field' );
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_secret_key', 'sanitize_text_field' );
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_threshold', 'fpp_sanitize_recaptcha_threshold' );
+    register_setting( 'fpp_settings_group', 'fpp_images_base_dir', 'fpp_sanitize_images_base_dir' );
     register_setting( 'fpp_settings_group', 'fpp_max_upload_size_mb', 'fpp_sanitize_max_upload_size_mb' );
 
+    // reCAPTCHA section
     add_settings_section(
         'fpp_recaptcha_section',
         'reCAPTCHA v3 Settings',
@@ -67,6 +69,15 @@ function fpp_register_settings() {
         'fpp-settings'
     );
 
+    // Upload settings section
+    add_settings_section(
+        'fpp_upload_section',
+        'Upload Settings',
+        'fpp_upload_section_callback',
+        'fpp-settings'
+    );
+
+    // reCAPTCHA fields
     add_settings_field(
         'fpp_recaptcha_site_key',
         'Site Key',
@@ -92,12 +103,22 @@ function fpp_register_settings() {
         array( 'label_for' => 'fpp_recaptcha_threshold' )
     );
 
+    // Upload settings fields
+    add_settings_field(
+        'fpp_images_base_dir',
+        'Images Base Directory',
+        'fpp_images_base_dir_callback',
+        'fpp-settings',
+        'fpp_upload_section',
+        array( 'label_for' => 'fpp_images_base_dir' )
+    );
+
     add_settings_field(
         'fpp_max_upload_size_mb',
         'Max Upload Size (MB)',
         'fpp_max_upload_size_mb_callback',
         'fpp-settings',
-        'fpp_recaptcha_section',
+        'fpp_upload_section',
         array( 'label_for' => 'fpp_max_upload_size_mb' )
     );
 }
@@ -128,8 +149,21 @@ function fpp_sanitize_max_upload_size_mb( $value ) {
     return (string) $f;
 }
 
+function fpp_sanitize_images_base_dir( $value ) {
+    // If saved empty, use default path
+    $trimmed = is_scalar( $value ) ? trim( (string) $value ) : '';
+    if ( $trimmed === '' ) {
+        return; wp_upload_dir()['basedir'] . '/fpp-plugin';
+    }
+    return $trimmed;
+}
+
 function fpp_recaptcha_section_callback() {
     echo '<p>Enter your Google reCAPTCHA v3 keys below. Get them from <a href="https://www.google.com/recaptcha/admin/create" target="_blank">Google reCAPTCHA Admin</a> (select v3 type). v3 is invisible and scores user interactions.</p>';
+}
+
+function fpp_upload_section_callback() {
+    echo '<p>Configurations for file submissions.</p>';
 }
 
 function fpp_recaptcha_site_key_callback() {
@@ -147,6 +181,13 @@ function fpp_recaptcha_threshold_callback() {
     // show default as placeholder (greyed out) when field is empty
     echo '<input type="number" step="0.01" min="0" max="1" id="fpp_recaptcha_threshold" name="fpp_recaptcha_threshold" value="' . esc_attr( $value ) . '" placeholder="0.5" class="small-text" /> ';
     echo '<span class="description">Score cutoff (0.0 - 1.0). Lower is more forgiving; higher is stricter.</span>';
+}
+
+function fpp_images_base_dir_callback() {
+    $value = get_option( 'fpp_images_base_dir', '' );
+    $default = wp_upload_dir()['basedir'] . '/fpp-plugin'; //fpp_get_default_upload_dir();
+    echo '<input type="text" id="fpp_images_base_dir" name="fpp_images_base_dir" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr($default) . '" class="regular-text" />';
+    echo '<p class="description">Directory where uploaded photos will be stored. Does not work, feature in development.</p>';
 }
 
 function fpp_max_upload_size_mb_callback() {
