@@ -92,7 +92,10 @@ RUN chown -R www-data:www-data /var/www/.wp-cli
 RUN chmod g+w -R /var/www/.wp-cli
 RUN chmod g+s /var/www/.wp-cli
 
-RUN sed 's/memory_limit = .*M/memory_limit = 256M/' /usr/local/etc/php/php.ini-development > /usr/local/etc/php/php.ini
+RUN sed 's/memory_limit = .*M/memory_limit = 256M/' /usr/local/etc/php/php.ini-development \
+	| sed 's/upload_max_filesize = .*M/upload_max_filesize = 8M/' \
+	| sed 's/post_max_size = .*M/post_max_size = 9M/' \
+> /usr/local/etc/php/php.ini
 
 RUN find /var/www/html/ -type d -exec chmod g+s {} \;
 WORKDIR /var/www/html
