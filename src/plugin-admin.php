@@ -153,7 +153,7 @@ function fpp_sanitize_images_base_dir( $value ) {
     // If saved empty, use default path
     $trimmed = is_scalar( $value ) ? trim( (string) $value ) : '';
     if ( $trimmed === '' ) {
-        return; wp_upload_dir()['basedir'] . '/fpp-plugin';
+        return wp_upload_dir()['basedir'] . '/fpp-plugin';
     }
     return $trimmed;
 }
