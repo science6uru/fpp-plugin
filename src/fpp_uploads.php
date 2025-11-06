@@ -182,7 +182,17 @@ function fpp_process_upload(WP_REST_Request $request) {
 
         // Apply filter to override upload path
         add_filter('upload_dir', function($dirs) use ($station_id) {
-            $dirs['subdir'] = '/fpp-plugin/station-' . $station_id;
+            $custom_base_dir = get_option('fpp_images_base_dir');
+            $subdir_prefix = '';
+            if (!empty($custom_base_dir)) {
+                $dirs['basedir'] = rtrim($custom_base_dir, '/');
+                $base_relative = str_replace( ABSPATH, '', $dirs['basedir'] );
+                $dirs['baseurl'] = trailingslashit( site_url() ) . ltrim( $base_relative, '/' );
+                wp_mkdir_p($dirs['basedir']);
+            } else {
+                $subdir_prefix = '/fpp-plugin';
+            }
+            $dirs['subdir'] = $subdir_prefix . '/station-' . $station_id;
             $dirs['path'] = $dirs['basedir'] . $dirs['subdir'];
             $dirs['url']  = $dirs['baseurl'] . $dirs['subdir'];
             return $dirs;
