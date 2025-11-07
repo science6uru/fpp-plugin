@@ -185,20 +185,27 @@ function fpp_recaptcha_threshold_callback() {
 
 function fpp_check_dir_writable($dir) {
     if (empty($dir)) return false;
-    return is_dir($dir) ? is_writable($dir) : is_writable(dirname($dir));
+    if (!is_dir($dir)) {
+        return is_writable(dirname($dir));
+    }
+    return is_writable($dir);
+}
+
+function fpp_check_dir_exists($dir) {
+    return !empty($dir) && is_dir($dir);
 }
 
 function fpp_images_base_dir_callback() {
     $value = get_option('fpp_images_base_dir', '');
     $default = wp_upload_dir()['basedir'] . '/fpp-plugin';
     
-    // Check if directory is writable
     $dir_to_check = empty($value) ? $default : $value;
+    $exists = fpp_check_dir_exists($dir_to_check);
     $is_writable = fpp_check_dir_writable($dir_to_check);
     
     $warning_html = '';
-    if (!$is_writable) {
-        $warning_html = '<span class="fpp-warning-icon" style="color: #f0ad4e; margin-left: 5px;" title="Directory not writable">⚠</span>';
+    if (!$exists || !$is_writable) {
+        $warning_html = '<span class="fpp-warning-icon" style="color: #f0ad4e; margin-left: 5px;" title="Directory issue">⚠</span>';
     }
     
     echo '<style>
@@ -208,16 +215,72 @@ function fpp_images_base_dir_callback() {
             border-left: 4px solid #f0ad4e;
             padding: 10px;
             margin-top: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .fpp-create-dir-btn {
+            background: #fff;
+            border: 1px solid #f0ad4e;
+            padding: 5px 10px;
+            cursor: pointer;
+            color: #856404;
+        }
+        .fpp-create-dir-btn:hover {
+            background: #f0ad4e;
+            color: #fff;
         }
     </style>';
+    
+    echo '<script>
+    function createDirectory() {
+        const btn = document.getElementById("create-dir-btn");
+        btn.disabled = true;
+        btn.textContent = "Creating...";
+        
+        fetch(ajaxurl, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+                action: "fpp_create_directory",
+                nonce: "' . wp_create_nonce('fpp_create_directory') . '",
+                path: "' . esc_js($dir_to_check) . '"
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert("Error: " + data.data);
+                btn.disabled = false;
+                btn.textContent = "Create Directory";
+            }
+        })
+        .catch(error => {
+            alert("Error: " + error);
+            btn.disabled = false;
+            btn.textContent = "Create Directory";
+        });
+    }
+    </script>';
     
     echo '<input type="text" id="fpp_images_base_dir" name="fpp_images_base_dir" value="' . esc_attr($value) . '" placeholder="' . esc_attr($default) . '" class="regular-text" />';
     echo $warning_html;
     
     echo '<p class="description">Directory where uploaded photos will be stored.</p>';
     
-    if (!$is_writable) {
-        echo '<div class="fpp-warning-message">The specified directory is not writable by the web server. Please ensure the directory exists and has proper write permissions.</div>';
+    if (!$exists) {
+        echo '<div class="fpp-warning-message">
+            <span>The specified directory does not exist.</span>
+            <button type="button" id="create-dir-btn" onclick="createDirectory()" class="fpp-create-dir-btn">Create Directory</button>
+        </div>';
+    } elseif (!$is_writable) {
+        echo '<div class="fpp-warning-message">
+            <span>The specified directory is not writable by the web server. Please ensure the directory has proper write permissions.</span>
+        </div>';
     }
 }
 
@@ -284,4 +347,36 @@ function fpp_admin_manage_render() {
 
     echo '</div>';
 }
+
+add_action('wp_ajax_fpp_create_directory', function() {
+    check_ajax_referer('fpp_create_directory', 'nonce');
+    
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Insufficient permissions');
+        return;
+    }
+    
+    $path = isset($_POST['path']) ? sanitize_text_field($_POST['path']) : '';
+    if (empty($path)) {
+        wp_send_json_error('No path specified');
+        return;
+    }
+    
+    // Create main directory
+    if (!wp_mkdir_p($path)) {
+        wp_send_json_error('Failed to create base directory');
+        return;
+    }
+
+    // Create station subdirectories
+    for ($i = 1; $i <= 2; $i++) {
+        $station_dir = $path . '/station-' . $i;
+        if (!wp_mkdir_p($station_dir)) {
+            wp_send_json_error('Failed to create station-' . $i . ' directory');
+            return;
+        }
+    }
+    
+    wp_send_json_success('Directories created successfully');
+});
 ?>

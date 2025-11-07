@@ -150,6 +150,23 @@ function fpp_process_upload(WP_REST_Request $request) {
             ), 500);
         }
         $photo_id = $wpdb->insert_id;
+
+        $custom_base_dir = get_option('fpp_images_base_dir');
+        $upload_base = !empty($custom_base_dir) ? $custom_base_dir : (wp_upload_dir()['basedir'] . '/fpp-plugin');
+        $target_dir = $upload_base . '/station-' . $station_id;
+        
+        if (!is_dir($target_dir)) {
+            return new WP_REST_Response(array(
+                'error' => 'Upload directory does not exist.',
+            ), 500);
+        }
+
+        if (!is_writable($target_dir)) {
+            return new WP_REST_Response(array(
+                'error' => 'Upload directory is not writable.',
+            ), 500);
+        }
+
         $overrides = array(
             'test_form' => false,
             'test_type' => true,
@@ -172,8 +189,8 @@ function fpp_process_upload(WP_REST_Request $request) {
                 if ($updated == false) {
                     throw new Exception("Failed to update filename");
                 }
-                $paths_created = wp_mkdir_p($dir);
-                if (! $paths_created) {
+                // Removed wp_mkdir_p call so it's more under control by admin
+                if (!is_dir($dir)) {
                     throw new Exception("Target directory does not exist.");
                 }
                 return $filename;
@@ -188,7 +205,7 @@ function fpp_process_upload(WP_REST_Request $request) {
                 $dirs['basedir'] = rtrim($custom_base_dir, '/');
                 $base_relative = str_replace( ABSPATH, '', $dirs['basedir'] );
                 $dirs['baseurl'] = trailingslashit( site_url() ) . ltrim( $base_relative, '/' );
-                wp_mkdir_p($dirs['basedir']);
+                // Removed wp_mkdir_p call so it's more under control by admin
             } else {
                 $subdir_prefix = '/fpp-plugin';
             }
