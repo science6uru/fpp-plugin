@@ -183,11 +183,42 @@ function fpp_recaptcha_threshold_callback() {
     echo '<span class="description">Score cutoff (0.0 - 1.0). Lower is more forgiving; higher is stricter.</span>';
 }
 
+function fpp_check_dir_writable($dir) {
+    if (empty($dir)) return false;
+    return is_dir($dir) ? is_writable($dir) : is_writable(dirname($dir));
+}
+
 function fpp_images_base_dir_callback() {
-    $value = get_option( 'fpp_images_base_dir', '' );
-    $default = wp_upload_dir()['basedir'] . '/fpp-plugin'; //fpp_get_default_upload_dir();
-    echo '<input type="text" id="fpp_images_base_dir" name="fpp_images_base_dir" value="' . esc_attr( $value ) . '" placeholder="' . esc_attr($default) . '" class="regular-text" />';
-    echo '<p class="description">Directory where uploaded photos will be stored. Does not work, feature in development.</p>';
+    $value = get_option('fpp_images_base_dir', '');
+    $default = wp_upload_dir()['basedir'] . '/fpp-plugin';
+    
+    // Check if directory is writable
+    $dir_to_check = empty($value) ? $default : $value;
+    $is_writable = fpp_check_dir_writable($dir_to_check);
+    
+    $warning_html = '';
+    if (!$is_writable) {
+        $warning_html = '<span class="fpp-warning-icon" style="color: #f0ad4e; margin-left: 5px;" title="Directory not writable">⚠</span>';
+    }
+    
+    echo '<style>
+        .fpp-warning-message {
+            color: #856404;
+            background-color: #fff3cd;
+            border-left: 4px solid #f0ad4e;
+            padding: 10px;
+            margin-top: 5px;
+        }
+    </style>';
+    
+    echo '<input type="text" id="fpp_images_base_dir" name="fpp_images_base_dir" value="' . esc_attr($value) . '" placeholder="' . esc_attr($default) . '" class="regular-text" />';
+    echo $warning_html;
+    
+    echo '<p class="description">Directory where uploaded photos will be stored.</p>';
+    
+    if (!$is_writable) {
+        echo '<div class="fpp-warning-message">The specified directory is not writable by the web server. Please ensure the directory exists and has proper write permissions.</div>';
+    }
 }
 
 function fpp_max_upload_size_mb_callback() {
