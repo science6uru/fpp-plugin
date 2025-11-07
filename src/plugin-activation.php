@@ -28,8 +28,7 @@ function fpp_install_data() {
 }
 
 function fpp_install() {
-    global $wpdb;
-    global $fpp_db_version, $fpp_photos, $fpp_stations;
+    global $wpdb, $fpp_db_version, $fpp_photos, $fpp_stations;
 
     $charset_collate = $wpdb->get_charset_collate();
 
@@ -56,6 +55,18 @@ function fpp_install() {
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
     dbDelta( $stations_sql );
     dbDelta( $photos_sql );
+
+    // Ensure base upload directory exists
+    $upload_dir = wp_upload_dir()['basedir'] . '/fpp-plugin';
+    wp_mkdir_p($upload_dir);
+
+    // Create station directories based on DB entries
+    $ids = $wpdb->get_col("SELECT id FROM $fpp_stations ORDER BY id ASC");
+    if (!empty($ids)) {
+        foreach ($ids as $id) {
+            wp_mkdir_p($upload_dir . '/station-' . intval($id));
+        }
+    }
 
 	fpp_install_data();
 }

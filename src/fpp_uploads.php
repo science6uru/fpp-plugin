@@ -35,6 +35,35 @@ function fpp_generate_unique_filename(String$user_ip, int$photo_id, String$ext) 
 /** Handle the user uploads */
 function fpp_process_upload(WP_REST_Request $request) {
     global $wpdb, $fpp_stations, $fpp_photos;
+    
+    // Get station ID and validate it exists first
+    $station_id = $request->get_param('id');
+    $station_sql = $wpdb->prepare("SELECT * from $fpp_stations where id = %d", $station_id);
+    $station = $wpdb->get_row($station_sql);
+
+    if ($wpdb->last_error or $station == NULL) {
+        error_log("Station lookup error: " . $wpdb->last_error);
+        return new WP_REST_Response(array(
+            'error' => "Invalid station",
+        ), 404);
+    }
+
+    $custom_base_dir = get_option('fpp_images_base_dir');
+    $upload_base = !empty($custom_base_dir) ? $custom_base_dir : (wp_upload_dir()['basedir'] . '/fpp-plugin');
+    $target_dir = $upload_base . '/station-' . $station_id;
+    
+    if (!is_dir($target_dir)) {
+        return new WP_REST_Response(array(
+            'error' => 'Upload directory does not exist.',
+        ), 500);
+    }
+
+    if (!is_writable($target_dir)) {
+        return new WP_REST_Response(array(
+            'error' => 'Upload directory is not writable.',
+        ), 500);
+    }
+
     $secret_key = get_option('fpp_recaptcha_secret_key');
     $uploaded_file = $_FILES['user_photo'];
 
@@ -114,17 +143,6 @@ function fpp_process_upload(WP_REST_Request $request) {
         // if ($response_body->action !== 'upload_photo') { ... }
     }
 
-    // Get station ID from route parameter
-    $station_id = $request->get_param('id');
-    $station_sql = $wpdb->prepare("SELECT * from $fpp_stations where id = %d", $station_id);
-    $station = $wpdb->get_row($station_sql);
-
-    if ($wpdb->last_error or $station == NULL) {
-        error_log("Station lookup error: " . $wpdb->last_error);
-        return new WP_REST_Response(array(
-            'error' => "Invalid station",
-        ), 404);
-    }
     $user_ip = fpp_get_user_ip();
 
     $wpdb->query('START TRANSACTION');
