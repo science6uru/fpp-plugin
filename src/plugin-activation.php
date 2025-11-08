@@ -12,18 +12,43 @@ $fpp_stations = $wpdb->prefix . 'fpp_stations';
 function fpp_install_data() {
     global $wpdb, $fpp_stations;
 
-    $station_array = [1, 2, 3];
-    foreach($station_array as $station_id) {
-        $station = $wpdb->get_row("SELECT * FROM $fpp_stations where id = $station_id");
-        if (! $station) {
-            $wpdb->insert( 
-                $fpp_stations, 
-                array( 
-                    'id' => $station_id, 
-                    'name' => "FPP Station $station_id", 
-                ) 
-            );
+    // Scan for existing station directories
+    $upload_dir = get_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp-plugin');
+    $pattern = $upload_dir . '/station-*';
+    $existing_dirs = glob($pattern, GLOB_ONLYDIR);
+    
+    if ($existing_dirs) {
+        foreach ($existing_dirs as $dir) {
+            if (preg_match('/station-(\d+)$/', $dir, $matches)) {
+                $station_id = intval($matches[1]);
+                $station = $wpdb->get_row($wpdb->prepare(
+                    "SELECT * FROM $fpp_stations WHERE id = %d",
+                    $station_id
+                ));
+                
+                if (!$station) {
+                    $wpdb->insert(
+                        $fpp_stations,
+                        array(
+                            'id' => $station_id,
+                            'name' => "FPP Station $station_id"
+                        ),
+                        array('%d', '%s')
+                    );
+                }
+            }
         }
+    } else {
+        // Create at least one default station if none exist
+        $wpdb->insert(
+            $fpp_stations,
+            array(
+                'id' => 1,
+                'name' => "FPP Station 1"
+            ),
+            array('%d', '%s')
+        );
+        wp_mkdir_p($upload_dir . '/station-1');
     }
 }
 
