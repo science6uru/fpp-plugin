@@ -20,27 +20,34 @@ function fpp_admin_register() {
         65                      // Position (optional)
     );
 
-    // Submenu: Manage Station 1
+    // Add Stations Management page
     add_submenu_page(
         'fpp-plugin-admin',
-        'Manage Station 1',
-        'Station 1',
-        'edit_posts',
-        'fpp-plugin-manage-1',
-        'fpp_admin_manage_render'
+        'Manage Stations',
+        'Stations',
+        'manage_options',
+        'fpp-plugin-stations',
+        'fpp_stations_render'
     );
 
-    // Submenu: Manage Station 2
-    add_submenu_page(
-        'fpp-plugin-admin',
-        'Manage Station 2',
-        'Station 2',
-        'edit_posts',
-        'fpp-plugin-manage-2',
-        'fpp_admin_manage_render'
-    );
+    // Dynamically add station submenus
+    global $wpdb, $fpp_stations;
+    $stations = $wpdb->get_results("SELECT * FROM $fpp_stations ORDER BY id ASC");
+    
+    if ($stations) {
+        foreach ($stations as $station) {
+            add_submenu_page(
+                'fpp-plugin-admin',
+                'Manage Station ' . esc_html($station->id),
+                '(' . esc_html($station->id) . ') ' . esc_html($station->name),
+                'edit_posts',
+                'fpp-plugin-manage-' . $station->id,
+                'fpp_admin_manage_render'
+            );
+        }
+    }
 
-    // Submenu: Settings
+    // Keep Settings as last item
     add_submenu_page(
         'fpp-plugin-admin',
         'FPP Settings',
@@ -428,27 +435,166 @@ function fpp_admin_render() {
 }
 
 // Station management
+
 function fpp_admin_manage_render() {
     global $title;
-
     // Extract station ID from page slug (e.g., fpp-plugin-manage-1 → 1)
     $page_slug   = $_GET['page'] ?? '';
     $parts       = explode( '-', $page_slug );
     $station_id  = is_numeric( end( $parts ) ) ? end( $parts ) : 0;
 
+    // Get station name for display
+    global $wpdb, $fpp_stations;
+    $station_name = '';
+    if ($station_id > 0 && !empty($fpp_stations)) {
+        $station = $wpdb->get_row($wpdb->prepare("SELECT name FROM $fpp_stations WHERE id = %d", $station_id));
+        if ($station) {
+            $station_name = esc_html($station->name);
+        }
+    }
+
     echo '<div class="wrap">';
-    echo '<h1>' . esc_html( $title ) . '</h1>';
+    echo '<h1>' . esc_html( $title ) . ' - ' . $station_name . '</h1>';
+
+    echo '<style>
+        .fpp-action-btn {
+            display: inline-block;
+            padding: 4px 12px;
+            margin-left: 6px;
+            text-decoration: none;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            background: #f7f7f7;
+            cursor: pointer;
+        }
+        .fpp-action-btn.delete {
+            color: #dc3232;
+            border-color: #dc3232;
+        }
+        .fpp-action-btn.delete:hover:not([disabled]) {
+            background: #dc3232;
+            color: #fff;
+        }
+        .fpp-action-btn[disabled] {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        #delete-all-photos-section {
+            background: #fff;
+            border: 1px solid #c3c4c7;
+            box-shadow: 0 1px 1px rgba(0,0,0,.04);
+            margin: 5px 0 20px;
+            padding: 1px 12px;
+            border-left-width: 4px;
+            border-left-color: #dc3232;
+        }
+    </style>';
+
+    echo '<div id="delete-all-photos-section">';
+    echo '<h3>Delete All Photos</h3>';
+    echo '<p><strong>Warning:</strong> This action will permanently delete all photos for this station from the database and file system. This cannot be undone.</p>';
+    echo '<button type="button" id="delete-all-photos-btn" class="fpp-action-btn delete" onclick="deleteAllPhotos(' . $station_id . ')">Delete All Photos</button>';
+    echo '</div>';
+
+    echo '<script>
+    function deleteAllPhotos(stationId) {
+        if (!confirm("Are you sure you want to delete ALL photos for this station? This will remove them from the database and file system permanently.")) {
+            return;
+        }
+        const btn = document.getElementById("delete-all-photos-btn");
+        btn.disabled = true;
+        btn.textContent = "Deleting...";
+        fetch(ajaxurl, {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+                action: "fpp_delete_station_photos",
+                nonce: "' . wp_create_nonce('fpp_delete_station_photos') . '",
+                station_id: stationId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert("Success: " + data.data);
+                location.reload();
+            } else {
+                alert("Error: " + data.data);
+                btn.disabled = false;
+                btn.textContent = "Delete All Photos";
+            }
+        })
+        .catch(error => {
+            alert("Error: " + error);
+            btn.disabled = false;
+            btn.textContent = "Delete All Photos";
+        });
+    }
+    </script>';
 
     $file = plugin_dir_path( __FILE__ ) . 'admin_manage.php';
-
     if ( file_exists( $file ) ) {
         require $file;
     } else {
         echo '<p><strong>File Not Found:</strong> ' . esc_html( $file ) . '</p>';
     }
-
     echo '</div>';
 }
+
+// This won't stay in the long term
+add_action('wp_ajax_fpp_delete_station_photos', function() {
+    check_ajax_referer('fpp_delete_station_photos', 'nonce');
+
+    if (!current_user_can('manage_options')) {
+        wp_send_json_error('Insufficient permissions');
+        return;
+    }
+
+    $station_id = isset($_POST['station_id']) ? intval($_POST['station_id']) : 0;
+    if ($station_id <= 0) {
+        wp_send_json_error('Invalid station ID');
+        return;
+    }
+
+    global $wpdb;
+    $prefix = $wpdb->prefix;
+    $photos_table = $prefix . 'fpp_photos';
+
+    // Delete photos from database
+    $deleted_db = $wpdb->delete(
+        $photos_table,
+        array('station_id' => $station_id),
+        array('%d')
+    );
+
+    if ($wpdb->last_error) {
+        wp_send_json_error('Database error: ' . $wpdb->last_error);
+        return;
+    }
+
+    $base_dir = get_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp-plugin');
+    $station_dir = rtrim($base_dir, '/') . '/station-' . $station_id;
+
+    if (!is_dir($station_dir)) {
+        wp_send_json_error('Station directory not found');
+        return;
+    }
+
+    $deleted_files = 0;
+    $files = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($station_dir, RecursiveDirectoryIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+
+    foreach ($files as $fileinfo) {
+        $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
+        if ($todo($fileinfo->getRealPath())) {
+            $deleted_files++;
+        }
+    }
+
+    wp_send_json_success("Deleted $deleted_db photos from database and $deleted_files files from directory.");
+});
 
 add_action('wp_ajax_fpp_create_directory', function() {
     check_ajax_referer('fpp_create_directory', 'nonce');
@@ -521,64 +667,326 @@ add_action('wp_ajax_fpp_sync_station_folders', function() {
         return;
     }
 
-    // Ensure we know the stations table
-    $stations_table = !empty($fpp_stations) ? $fpp_stations : $wpdb->prefix . 'fpp_stations';
-    $exists = $wpdb->get_var( $wpdb->prepare("SHOW TABLES LIKE %s", $stations_table) );
-    if ($exists !== $stations_table) {
-        wp_send_json_error('Stations table not found.');
-        return;
-    }
-
-    // Get station ids from DB
-    $ids = $wpdb->get_col("SELECT id FROM {$stations_table} ORDER BY id ASC");
+    // Get DB station IDs
+    $db_stations = $wpdb->get_results("SELECT id, name FROM {$fpp_stations} ORDER BY id ASC", ARRAY_A);
     if ($wpdb->last_error) {
         wp_send_json_error('DB error: ' . $wpdb->last_error);
         return;
     }
-    $ids = array_map('intval', $ids);
+    $db_ids = array_column($db_stations, 'id');
 
-    // Ensure station dirs exist, create missing
+    // Get filesystem station IDs 
+    $fs_stations = array();
+    foreach (glob($path . '/station-*', GLOB_ONLYDIR) as $dir) {
+        if (preg_match('/station-(\d+)$/', $dir, $m)) {
+            $id = (int)$m[1];
+            $files = glob($dir . '/*');
+            $fs_stations[$id] = array(
+                'path' => $dir,
+                'has_files' => !empty($files)
+            );
+        }
+    }
+    
     $created = 0;
-    foreach ($ids as $id) {
-        $d = $path . '/station-' . $id;
-        if (!is_dir($d)) {
-            if (wp_mkdir_p($d)) {
-                $created++;
+    $removed = 0;
+    $auto_added = 0;
+    
+
+    // Handle directories with no DB entry
+    foreach ($fs_stations as $id => $info) {
+        if (!in_array($id, $db_ids)) {
+            if ($info['has_files']) {
+                // Directory has files but no DB entry - auto add it
+                // TODO: Right now, they don't get added to the database so they just stay as unlinked images when this happens, fix later
+                $wpdb->insert(
+                    $fpp_stations,
+                    array('id' => $id, 'name' => "Auto-added Station {$id}"), 
+                    array('%d', '%s')
+                );
+                $auto_added++;
             } else {
-                // continue, report later
+                // Empty directory, remove it
+                @rmdir($info['path']);
+                $removed++;
             }
         }
     }
 
-    // Remove station-* dirs that are not in DB, only if tyhey're empty
-    $removed = 0;
-    $skipped_nonempty = array();
-    foreach (glob($path . '/station-*', GLOB_ONLYDIR) as $dir) {
-        $basename = basename($dir);
-        if (preg_match('/station-(\d+)$/', $basename, $m)) {
-            $sid = (int)$m[1];
-            if (!in_array($sid, $ids, true)) {
-                $files = glob($dir . '/*');
-                if ($files === false || count($files) === 0) {
-                    if (@rmdir($dir)) {
-                        $removed++;
-                    } else {
-                        $skipped_nonempty[] = $basename;
-                    }
-                } else {
-                    $skipped_nonempty[] = $basename;
-                }
+    // Create missing directories for DB entries
+    foreach ($db_ids as $id) {
+        if (!isset($fs_stations[$id])) {
+            $d = $path . '/station-' . $id;
+            if (wp_mkdir_p($d)) {
+                $created++;
             }
         }
     }
 
     $parts = array();
-    $parts[] = "created: {$created}";
-    $parts[] = "removed: {$removed}";
-    if (!empty($skipped_nonempty)) {
-        $parts[] = "skipped_nonempty: " . implode(',', array_slice($skipped_nonempty,0,10));
+    if ($created > 0) { $parts[] = "created: {$created}"; }
+    if ($removed > 0) { $parts[] = "removed: {$removed}"; }
+    if ($auto_added > 0) { $parts[] = "auto-added: {$auto_added}"; }
+    
+    wp_send_json_success(empty($parts) ? "No changes needed" : implode('; ', $parts));
+});
+
+function fpp_stations_render() {
+    global $wpdb, $fpp_stations;
+
+    // Handle form submissions
+    if (isset($_POST['action'])) {
+        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'fpp_stations_nonce' ) ) {
+            add_settings_error(
+                'fpp_stations',
+                'nonce_fail',
+                'Security check failed. Please try again.',
+                'error'
+            );
+        } else {
+            $action = sanitize_text_field( wp_unslash( $_POST['action'] ) );
+            switch ($action) {
+                case 'add_station':
+                    if (isset($_POST['station_name'])) {
+                        $name = sanitize_text_field($_POST['station_name']);
+                        
+                        // Get the highest station ID and inc by 1
+                        $next_id = $wpdb->get_var("SELECT MAX(id) FROM $fpp_stations");
+                        $next_id = intval($next_id) + 1;
+                        
+                        $wpdb->insert(
+                            $fpp_stations,
+                            array(
+                                'id' => $next_id,
+                                'name' => $name
+                            ),
+                            array('%d', '%s')
+                        );
+                        
+                        // Create station directory
+                        $upload_dir = get_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp-plugin');
+                        wp_mkdir_p($upload_dir . '/station-' . $next_id);
+                        add_settings_error('fpp_stations', 'station_added', 'Station added.', 'updated');
+                    }
+                    break;
+
+                case 'update_station':
+                    if (isset($_POST['station_id']) && isset($_POST['station_name'])) {
+                        $wpdb->update(
+                            $fpp_stations,
+                            array('name' => sanitize_text_field($_POST['station_name'])),
+                            array('id' => intval($_POST['station_id'])),
+                            array('%s'),
+                            array('%d')
+                        );
+                        add_settings_error('fpp_stations', 'station_updated', 'Station updated.', 'updated');
+                    }
+                    break;
+
+                case 'delete_station':
+                    if (isset($_POST['station_id'])) {
+                        $station_id = intval($_POST['station_id']);
+                        
+                        // Check if station has photos
+                        $photos_count = intval( $wpdb->get_var( $wpdb->prepare(
+                            "SELECT COUNT(*) FROM {$wpdb->prefix}fpp_photos WHERE station_id = %d",
+                            $station_id
+                        ) ) );
+
+                        if ($photos_count > 0) {
+                            add_settings_error(
+                                'fpp_stations',
+                                'station_has_photos',
+                                'Cannot delete station: It has associated photos.',
+                                'error'
+                            );
+                        } else {
+                            $deleted = $wpdb->delete($fpp_stations, array('id' => $station_id), array('%d'));
+                            if ( $deleted === false ) {
+                                add_settings_error('fpp_stations', 'delete_failed', 'Failed to delete station (DB error).', 'error');
+                            } else {
+                                // Remove station directory if empty
+                                $upload_dir = get_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp-plugin');
+                                $station_dir = $upload_dir . '/station-' . $station_id;
+                                if (is_dir($station_dir) && (glob($station_dir . '/*') === false || count(glob($station_dir . '/*')) === 0)) {
+                                    @rmdir($station_dir);
+                                }
+                                add_settings_error('fpp_stations', 'station_deleted', 'Station deleted.', 'updated');
+                            }
+                        }
+                    }
+                    break;
+            }
+        }
     }
 
-    wp_send_json_success(implode('; ', $parts));
-});
+    // Get current stations
+    $stations = $wpdb->get_results("SELECT s.*, COUNT(p.id) as photo_count 
+        FROM $fpp_stations s 
+        LEFT JOIN {$wpdb->prefix}fpp_photos p ON s.id = p.station_id 
+        GROUP BY s.id 
+        ORDER BY s.id ASC");
+
+    ?>
+    <div class="wrap">
+        <h1>Manage FPP Stations</h1>
+        <?php settings_errors('fpp_stations'); ?>
+
+        <!-- Add New Station -->
+        <div class="card" style="margin-bottom:18px;">
+            <h2>Add New Station</h2>
+            <form method="post" action="">
+                <?php wp_nonce_field('fpp_stations_nonce'); ?>
+                <input type="hidden" name="action" value="add_station">
+                <input type="hidden" name="auto_update" value="true">
+                <p>
+                    <label for="station_name">Station Name:</label>
+                    <input type="text" name="station_name" id="station_name" required>
+                </p>
+                <?php submit_button('Add Station'); ?>
+            </form>
+        </div>
+
+        <!-- Existing Stations  -->
+        <div class="card">
+            <h2>Existing Stations</h2>
+
+            <style>
+                .fpp-stations-table { table-layout: fixed; width: 100%; }
+                .fpp-stations-table th, .fpp-stations-table td { vertical-align: middle; }
+                .fpp-stations-table th.name-col { width: auto; }
+                .fpp-stations-table th.photos-col { width: 60px; text-align: center; }
+                .fpp-stations-table td.actions-col { white-space: nowrap; }
+                .fpp-photo-box {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    min-width: 64px;
+                    height: 32px;
+                    border: 1px solid #e1e1e1;
+                    background: #fff;
+                    border-radius: 4px;
+                    padding: 0 8px;
+                    box-sizing: border-box;
+                    font-weight: 600;
+                }
+                .fpp-station-name-input {
+                    max-width: 420px;
+                    width: 100%;
+                    box-sizing: border-box;
+                }
+                .fpp-action-btn {
+                    display: inline-block;
+                    padding: 4px 12px;
+                    margin-left: 6px;
+                    text-decoration: none;
+                    border-radius: 4px;
+                    border: 1px solid #ddd;
+                    background: #f7f7f7;
+                    cursor: pointer;
+                }
+                .fpp-action-btn.update {
+                    color: #135e96;
+                    border-color: #135e96;
+                }
+                .fpp-action-btn.update:hover {
+                    background: #135e96;
+                    color: #fff;
+                }
+                .fpp-action-btn.delete {
+                    color: #dc3232;
+                    border-color: #dc3232;
+                }
+                .fpp-action-btn.delete:hover:not([disabled]) {
+                    background: #dc3232;
+                    color: #fff;
+                }
+                .fpp-action-btn[disabled] {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                    position: relative;
+                }
+                .fpp-action-btn[disabled]:hover::after {
+                    content: attr(data-tooltip);
+                    position: absolute;
+                    bottom: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    padding: 5px 10px;
+                    background: rgba(0,0,0,0.8);
+                    color: white;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    white-space: nowrap;
+                    z-index: 100;
+                    margin-bottom: 5px;
+                }
+                .fpp-action-btn[disabled]:hover::before {
+                    content: '';
+                    position: absolute;
+                    bottom: 100%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    border: 5px solid transparent;
+                    border-top-color: rgba(0,0,0,0.8);
+                    margin-bottom: -5px;
+                }
+            </style>
+
+            <table class="wp-list-table widefat fixed striped fpp-stations-table">
+                <thead>
+                    <tr>
+                        <th style="width:20px;">ID</th>
+                        <th class="name-col">Name</th>
+                        <th class="photos-col">Photos</th>
+                        <th style="width:180px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($stations as $station): ?>
+                    <tr>
+                        <td><?php echo esc_html($station->id); ?></td>
+                        <td>
+                            <form method="post" action="" style="display:inline; width:100%;" id="form-station-<?php echo esc_attr($station->id); ?>">
+                                <?php wp_nonce_field('fpp_stations_nonce'); ?>
+                                <input type="hidden" name="action" value="update_station">
+                                <input type="hidden" name="station_id" value="<?php echo esc_attr($station->id); ?>">
+                                <input type="text" name="station_name" value="<?php echo esc_attr($station->name); ?>" class="fpp-station-name-input">
+                            </form>
+                        </td>
+                        <td style="text-align:center;">
+                            <div class="fpp-photo-box" aria-label="Photo count">
+                                <?php echo esc_html( intval($station->photo_count) ); ?>
+                            </div>
+                        </td>
+                        <td class="actions-col">
+                            <button type="submit" form="form-station-<?php echo esc_attr($station->id); ?>" class="fpp-action-btn update">Update</button>
+                            <form method="post" action="" style="display:inline">
+                                <?php wp_nonce_field('fpp_stations_nonce'); ?>
+                                <input type="hidden" name="action" value="delete_station">
+                                <input type="hidden" name="station_id" value="<?php echo esc_attr($station->id); ?>">
+                                <button type="submit" class="fpp-action-btn delete" 
+                                        <?php if ($station->photo_count > 0): ?>
+                                            disabled
+                                            data-tooltip="Cannot delete: Station has <?php echo esc_attr($station->photo_count); ?> photo<?php echo $station->photo_count > 1 ? 's' : ''; ?>"
+                                        <?php else: ?>
+                                            onclick="return confirm('Are you sure you want to delete this station?')"
+                                        <?php endif; ?>>
+                                    Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                    <?php if ( empty( $stations ) ) : ?>
+                    <tr>
+                        <td colspan="4"><?php echo esc_html__('No stations found.', 'fpp-plugin'); ?></td>
+                    </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <?php
+}
 ?>
