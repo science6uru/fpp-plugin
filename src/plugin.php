@@ -6,6 +6,36 @@ Version: 1.0
 Author: Science6uru
 License: GPLv2 or later
 */
+
+
+function fpp_register_scripts() {
+    $fpp_upload_dependencies = ["jquery"];
+
+    $fpp_upload_data = array("fpp_max_upload_size_mb" => get_option("fpp_max_upload_size_mb"));
+
+    $site_key = get_option('fpp_recaptcha_site_key');
+    if (!empty($site_key)) {
+        wp_register_script('fpp-recaptcha-v3', 'https://www.google.com/recaptcha/api.js?render=' . esc_attr($site_key), [], null, true);
+        $fpp_upload_dependencies[] = "fpp-recaptcha-v3";
+        $fpp_upload_data['site_key'] = esc_attr($site_key);
+    }
+    wp_register_script(
+        'fpp_upload',
+        plugins_url( '/js/fpp_upload.js', __FILE__ ),
+        $fpp_upload_dependencies,
+        false,           // Version number
+        true               // Load in the footer (recommended for performance)
+    );
+
+
+    wp_localize_script( 'fpp_upload', 'php_vars', $fpp_upload_data );
+
+    wp_register_style('fpp_upload', plugins_url(  "css/fpp_upload.css", __FILE__ ));
+
+}
+add_action( 'wp_enqueue_scripts', 'fpp_register_scripts' );
+add_action( 'admin_enqueue_scripts', 'fpp_register_scripts' );
+
 require("plugin-admin.php");
 require("plugin-activation.php");
 require("plugin-shortcodes.php");
