@@ -7,6 +7,32 @@
  * - Render functions for dashboard and station management
  */
 
+add_action('admin_enqueue_scripts', 'fpp_admin_styles');
+
+function fpp_admin_styles($hook) {
+    $current_screen = get_current_screen();
+    
+    if ($current_screen && (
+        strpos($current_screen->base, 'fpp-plugin') !== false || 
+        strpos($current_screen->base, 'fpp-settings') !== false
+    )) {
+        wp_enqueue_style(
+            'fpp-admin-style', 
+            plugin_dir_url(__FILE__) . 'admin-style.css', 
+            array(), 
+            '1.0'
+        );
+        
+        // Enqueue frontend styles as well for previewing shortcodes in the admin_manage
+        wp_enqueue_style(
+            'fpp-frontend-style', 
+            plugin_dir_url(__FILE__) . 'frontend-style.css', 
+            array(), 
+            '1.0'
+        );
+    }
+}
+
 add_action( 'admin_menu', 'fpp_admin_register' );
 
 function fpp_admin_register() {
@@ -235,35 +261,12 @@ function fpp_images_base_dir_callback() {
 
     $warning_html = '';
     if (!$exists || !$is_writable) {
-        $warning_html = '<span class="fpp-warning-icon" style="color: #f0ad4e; margin-left: 5px;" title="Directory issue">⚠</span>';
+        $warning_html = '<span class="fpp-warning-icon" title="Directory issue">⚠</span>';
     }
     
-    echo '<style>
-        .fpp-warning-message {
-            color: #856404;
-            background-color: #fff3cd;
-            border-left: 4px solid #f0ad4e;
-            padding: 10px;
-            margin-top: 5px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .fpp-create-dir-btn, .fpp-sync-dir-btn, .fpp-rebuild-dir-btn {
-            background: #fff;
-            border: 1px solid #f0ad4e;
-            padding: 5px 10px;
-            cursor: pointer;
-            color: #856404;
-            margin-left: 8px;
-        }
-        .fpp-create-dir-btn:hover, .fpp-sync-dir-btn:hover { background: #f0ad4e; color: #fff; }
-        .fpp-rebuild-dir-btn { border-color: #d9534f; color: #d9534f; }
-        .fpp-rebuild-dir-btn:hover { background: #d9534f; color: #fff; }
-    </style>';
-
     // JS: create + sync handlers
-    echo '<script>
+    ?>
+    <script>
     function createDirectory() {
         const btn = document.getElementById("create-dir-btn");
         btn.disabled = true;
@@ -273,8 +276,8 @@ function fpp_images_base_dir_callback() {
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({
                 action: "fpp_create_directory",
-                nonce: "' . wp_create_nonce('fpp_create_directory') . '",
-                path: "' . esc_js($dir_to_check) . '"
+                nonce: "<?php echo wp_create_nonce('fpp_create_directory'); ?>",
+                path: "<?php echo esc_js($dir_to_check); ?>"
             })
         })
         .then(response => response.json())
@@ -303,8 +306,8 @@ function fpp_images_base_dir_callback() {
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({
                 action: "fpp_sync_station_folders",
-                nonce: "' . wp_create_nonce('fpp_sync_station_folders') . '",
-                path: "' . esc_js($dir_to_check) . '"
+                nonce: "<?php echo wp_create_nonce('fpp_sync_station_folders'); ?>",
+                path: "<?php echo esc_js($dir_to_check); ?>"
             })
         })
         .then(response => response.json())
@@ -324,22 +327,28 @@ function fpp_images_base_dir_callback() {
             btn.textContent = "Sync Station Folders";
         });
     }
-    </script>';
+    </script>
     
-    echo '<input type="text" id="fpp_images_base_dir" name="fpp_images_base_dir" value="' . esc_attr($value) . '" placeholder="' . esc_attr($default) . '" class="regular-text" />';
-    echo $warning_html;
-    
-    echo '<p class="description">This is where uploaded photos will be stored.</p>';
+    <div class="fpp-settings-field">
+        <input type="text" id="fpp_images_base_dir" name="fpp_images_base_dir" value="<?php echo esc_attr($value); ?>" placeholder="<?php echo esc_attr($default); ?>" class="regular-text" />
+        <?php echo $warning_html; ?>
+        <p class="description">This is where uploaded photos will be stored.</p>
+    </div>
+    <?php
     
     if (!$exists) {
-        echo '<div class="fpp-warning-message">
+        ?>
+        <div class="fpp-warning-message">
             <span>The specified directory does not exist.</span>
             <button type="button" id="create-dir-btn" onclick="createDirectory()" class="fpp-create-dir-btn">Create Directory</button>
-        </div>';
+        </div>
+        <?php
     } elseif (!$is_writable) {
-        echo '<div class="fpp-warning-message">
+        ?>
+        <div class="fpp-warning-message">
             <span>The specified directory is not writable by the web server. Please ensure the directory has proper write permissions.</span>
-        </div>';
+        </div>
+        <?php
     } else {
         $show_sync = false;
         $sync_note = '';
@@ -375,22 +384,31 @@ function fpp_images_base_dir_callback() {
         }
 
         if ($show_sync) {
-            echo '<div class="fpp-warning-message">
-                <span>Detected discrepancy between DB and folders. ' . esc_html($sync_note) . '</span>
+            ?>
+            <div class="fpp-warning-message">
+                <span>Detected discrepancy between DB and folders. <?php echo esc_html($sync_note); ?></span>
                 <button type="button" id="sync-dir-btn" onclick="syncStationFolders()" class="fpp-sync-dir-btn">Sync Station Folders</button>
-            </div>';
-        }
-        else {
-            echo '<p class="description" style="color: green;">Directory exists and is writable. Station folders are in sync with the database.</p>';
+            </div>
+            <?php
+        } else {
+            ?>
+            <div class="fpp-success-message">
+                <p>Directory exists and is writable. Station folders are in sync with the database.</p>
+            </div>
+            <?php
         }
     }
 
     // Troubleshooting
-    echo '<div style="margin-top:12px;padding:10px;border:1px solid #ddd;background:#f7f7f7;">
-        <strong>Troubleshooting</strong>
-        <p style="margin:6px 0 8px 0;">Stuff you probably won\'t need to use a lot. Use with caution. </p>
-        <button type="button" id="rebuild-dir-btn" onclick="if(confirm(\'(Placeholder - not functional) \nThis would DELETE all image files inside the station subdirectories. Are you sure?\')){ alert(\'Action not implemented.\'); }" class="fpp-rebuild-dir-btn">Full Rebuild (delete images)</button>
-    </div>';
+    ?>
+    <div class="fpp-destructive-section">
+        <h3>Troubleshooting</h3>
+        <p><strong>Warning:</strong> These advanced actions are for directory management only. Use with extreme caution, as they may result in permanent data loss.</p>
+        <div class="fpp-troubleshoot-actions">
+            <button type="button" id="rebuild-dir-btn" onclick="if(confirm('This action would DELETE all image files inside the station subdirectories. Are you sure?')){ alert('Action not implemented.'); }" class="fpp-action-btn delete">Full Rebuild (delete images)</button>
+        </div>
+    </div>
+    <?php
 }
 
 function fpp_max_upload_size_mb_callback() {
@@ -452,93 +470,62 @@ function fpp_admin_manage_render() {
             $station_name = esc_html($station->name);
         }
     }
+    ?>
+    <div class="wrap">
+        <h1><?php echo esc_html( $title ); ?> - <?php echo $station_name; ?></h1>
 
-    echo '<div class="wrap">';
-    echo '<h1>' . esc_html( $title ) . ' - ' . $station_name . '</h1>';
+        <div class="fpp-destructive-section">
+            <h3>Delete All Photos</h3>
+            <p><strong>Warning:</strong> This action will permanently delete all photos for this station from the database and file system. This cannot be undone.</p>
+            <button type="button" id="delete-all-photos-btn" class="fpp-action-btn delete" onclick="deleteAllPhotos(<?php echo $station_id; ?>)">Delete All Photos</button>
+        </div>
 
-    echo '<style>
-        .fpp-action-btn {
-            display: inline-block;
-            padding: 4px 12px;
-            margin-left: 6px;
-            text-decoration: none;
-            border-radius: 4px;
-            border: 1px solid #ddd;
-            background: #f7f7f7;
-            cursor: pointer;
-        }
-        .fpp-action-btn.delete {
-            color: #dc3232;
-            border-color: #dc3232;
-        }
-        .fpp-action-btn.delete:hover:not([disabled]) {
-            background: #dc3232;
-            color: #fff;
-        }
-        .fpp-action-btn[disabled] {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        #delete-all-photos-section {
-            background: #fff;
-            border: 1px solid #c3c4c7;
-            box-shadow: 0 1px 1px rgba(0,0,0,.04);
-            margin: 5px 0 20px;
-            padding: 1px 12px;
-            border-left-width: 4px;
-            border-left-color: #dc3232;
-        }
-    </style>';
-
-    echo '<div id="delete-all-photos-section">';
-    echo '<h3>Delete All Photos</h3>';
-    echo '<p><strong>Warning:</strong> This action will permanently delete all photos for this station from the database and file system. This cannot be undone.</p>';
-    echo '<button type="button" id="delete-all-photos-btn" class="fpp-action-btn delete" onclick="deleteAllPhotos(' . $station_id . ')">Delete All Photos</button>';
-    echo '</div>';
-
-    echo '<script>
-    function deleteAllPhotos(stationId) {
-        if (!confirm("Are you sure you want to delete ALL photos for this station? This will remove them from the database and file system permanently.")) {
-            return;
-        }
-        const btn = document.getElementById("delete-all-photos-btn");
-        btn.disabled = true;
-        btn.textContent = "Deleting...";
-        fetch(ajaxurl, {
-            method: "POST",
-            headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-                action: "fpp_delete_station_photos",
-                nonce: "' . wp_create_nonce('fpp_delete_station_photos') . '",
-                station_id: stationId
+        <script>
+        function deleteAllPhotos(stationId) {
+            if (!confirm("Are you sure you want to delete ALL photos for this station? This will remove them from the database and file system permanently.")) {
+                return;
+            }
+            const btn = document.getElementById("delete-all-photos-btn");
+            btn.disabled = true;
+            btn.textContent = "Deleting...";
+            fetch(ajaxurl, {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: new URLSearchParams({
+                    action: "fpp_delete_station_photos",
+                    nonce: "<?php echo wp_create_nonce('fpp_delete_station_photos'); ?>",
+                    station_id: stationId
+                })
             })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert("Success: " + data.data);
-                location.reload();
-            } else {
-                alert("Error: " + data.data);
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Success: " + data.data);
+                    location.reload();
+                } else {
+                    alert("Error: " + data.data);
+                    btn.disabled = false;
+                    btn.textContent = "Delete All Photos";
+                }
+            })
+            .catch(error => {
+                alert("Error: " + error);
                 btn.disabled = false;
                 btn.textContent = "Delete All Photos";
-            }
-        })
-        .catch(error => {
-            alert("Error: " + error);
-            btn.disabled = false;
-            btn.textContent = "Delete All Photos";
-        });
-    }
-    </script>';
+            });
+        }
+        </script>
 
-    $file = plugin_dir_path( __FILE__ ) . 'admin_manage.php';
-    if ( file_exists( $file ) ) {
-        require $file;
-    } else {
-        echo '<p><strong>File Not Found:</strong> ' . esc_html( $file ) . '</p>';
-    }
-    echo '</div>';
+        <?php
+        $file = plugin_dir_path( __FILE__ ) . 'admin_manage.php';
+        if ( file_exists( $file ) ) {
+            require $file;
+        } else {
+            echo '<p><strong>File Not Found:</strong> ' . esc_html( $file ) . '</p>';
+        }
+        ?>
+    </div>
+    <?php
 }
 
 // This won't stay in the long term
@@ -850,89 +837,6 @@ function fpp_stations_render() {
         <!-- Existing Stations  -->
         <div class="card">
             <h2>Existing Stations</h2>
-
-            <style>
-                .fpp-stations-table { table-layout: fixed; width: 100%; }
-                .fpp-stations-table th, .fpp-stations-table td { vertical-align: middle; }
-                .fpp-stations-table th.name-col { width: auto; }
-                .fpp-stations-table th.photos-col { width: 60px; text-align: center; }
-                .fpp-stations-table td.actions-col { white-space: nowrap; }
-                .fpp-photo-box {
-                    display: inline-flex;
-                    align-items: center;
-                    justify-content: center;
-                    min-width: 64px;
-                    height: 32px;
-                    border: 1px solid #e1e1e1;
-                    background: #fff;
-                    border-radius: 4px;
-                    padding: 0 8px;
-                    box-sizing: border-box;
-                    font-weight: 600;
-                }
-                .fpp-station-name-input {
-                    max-width: 420px;
-                    width: 100%;
-                    box-sizing: border-box;
-                }
-                .fpp-action-btn {
-                    display: inline-block;
-                    padding: 4px 12px;
-                    margin-left: 6px;
-                    text-decoration: none;
-                    border-radius: 4px;
-                    border: 1px solid #ddd;
-                    background: #f7f7f7;
-                    cursor: pointer;
-                }
-                .fpp-action-btn.update {
-                    color: #135e96;
-                    border-color: #135e96;
-                }
-                .fpp-action-btn.update:hover {
-                    background: #135e96;
-                    color: #fff;
-                }
-                .fpp-action-btn.delete {
-                    color: #dc3232;
-                    border-color: #dc3232;
-                }
-                .fpp-action-btn.delete:hover:not([disabled]) {
-                    background: #dc3232;
-                    color: #fff;
-                }
-                .fpp-action-btn[disabled] {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                    position: relative;
-                }
-                .fpp-action-btn[disabled]:hover::after {
-                    content: attr(data-tooltip);
-                    position: absolute;
-                    bottom: 100%;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    padding: 5px 10px;
-                    background: rgba(0,0,0,0.8);
-                    color: white;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    white-space: nowrap;
-                    z-index: 100;
-                    margin-bottom: 5px;
-                }
-                .fpp-action-btn[disabled]:hover::before {
-                    content: '';
-                    position: absolute;
-                    bottom: 100%;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    border: 5px solid transparent;
-                    border-top-color: rgba(0,0,0,0.8);
-                    margin-bottom: -5px;
-                }
-            </style>
-
             <table class="wp-list-table widefat fixed striped fpp-stations-table">
                 <thead>
                     <tr>
@@ -955,9 +859,11 @@ function fpp_stations_render() {
                             </form>
                         </td>
                         <td style="text-align:center;">
-                            <div class="fpp-photo-box" aria-label="Photo count">
-                                <?php echo esc_html( intval($station->photo_count) ); ?>
-                            </div>
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=fpp-plugin-manage-' . esc_attr( $station->id ) ) ); ?>" class="fpp-photo-link">
+                                <div class="fpp-photo-box" aria-label="Photo count: <?php echo esc_attr( intval( $station->photo_count ) ); ?>">
+                                    <?php echo esc_html( intval( $station->photo_count ) ); ?>
+                                </div>
+                            </a>
                         </td>
                         <td class="actions-col">
                             <button type="submit" form="form-station-<?php echo esc_attr($station->id); ?>" class="fpp-action-btn update">Update</button>
