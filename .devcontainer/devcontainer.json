@@ -44,7 +44,8 @@
 				"bmewburn.vscode-intelephense-client",
 				"devsense.composer-php-vscode",
 				"wordpresstoolbox.wordpress-toolbox",
-				"johnbillion.vscode-wordpress-hooks"
+				"johnbillion.vscode-wordpress-hooks",
+				"GitHub.vscode-pull-request-github"
 			]
 		}
 	},
