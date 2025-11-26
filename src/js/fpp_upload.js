@@ -78,17 +78,6 @@
             $("#file-selector").hide();
             $("#file-display").show();
             preview.attr("src", previewUrl);
-            // $("#upload_preview")
-
-        //   let filedata = `
-        //     <form action="" method="post">
-        //     <div class="form">
-        //     <h4>${fileName}</h4>
-        //     <input type="email" placeholder="Enter email upload file">
-        //     <button class="btn">Upload</button>
-        //     </div>
-        //     </form>`;
-        //   dropArea.innerHTML = filedata;
         });
     });
 })(jQuery);
