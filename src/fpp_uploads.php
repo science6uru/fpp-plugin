@@ -270,4 +270,6 @@ function fpp_register_routes(){
 }
 
 add_action('rest_api_init', 'fpp_register_routes');
+
+
 ?>

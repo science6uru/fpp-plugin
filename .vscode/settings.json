@@ -1,5 +1,6 @@
 {
     "intelephense.environment.includePaths": [
         "/var/www/html"
-    ]
+    ],
+    "remote.localPortHost": "allInterfaces"
 }
