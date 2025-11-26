@@ -1,0 +1,211 @@
+/* FPP Plugin Admin Styles */
+
+.fpp-settings-field {
+    margin-bottom: 15px;
+}
+
+.fpp-success-message {
+    color: #155724;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 4px;
+    padding: 12px;
+    margin: 10px 0;
+}
+
+.fpp-success-message p {
+    margin: 0;
+    color: #155724;
+}
+
+.fpp-destructive-section {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    box-shadow: 0 1px 1px rgba(0,0,0,.04);
+    margin: 10px 0 20px;
+    padding: 15px;
+    border-left-width: 4px;
+    border-left-color: #dc3232;
+}
+
+.fpp-troubleshoot-actions {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #e1e1e1;
+}
+
+.fpp-troubleshoot-actions .fpp-action-btn {
+    margin-top: 5px;
+}
+
+.fpp-destructive-section h3 {
+    margin-top: 0;
+    color: #dc3232;
+}
+
+.fpp-warning-icon {
+    color: #f0ad4e;
+    margin-left: 5px;
+}
+
+.fpp-warning-message {
+    color: #856404;
+    background-color: #fff3cd;
+    border-left: 4px solid #f0ad4e;
+    padding: 10px;
+    margin-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.fpp-create-dir-btn, 
+.fpp-sync-dir-btn, 
+.fpp-rebuild-dir-btn {
+    background: #fff;
+    border: 1px solid #f0ad4e;
+    padding: 5px 10px;
+    cursor: pointer;
+    color: #856404;
+    margin-left: 8px;
+    text-decoration: none;
+    border-radius: 3px;
+    font-size: 13px;
+}
+
+.fpp-create-dir-btn:hover, 
+.fpp-sync-dir-btn:hover {
+    background: #f0ad4e;
+    color: #fff;
+}
+
+.fpp-rebuild-dir-btn {
+    border-color: #d9534f;
+    color: #d9534f;
+}
+
+.fpp-rebuild-dir-btn:hover {
+    background: #d9534f;
+    color: #fff;
+}
+
+/* Station Management */
+.fpp-stations-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.fpp-stations-table th, 
+.fpp-stations-table td {
+    vertical-align: middle;
+}
+
+.fpp-stations-table th.name-col {
+    width: auto;
+}
+
+.fpp-stations-table th.photos-col {
+    width: 60px;
+    text-align: center;
+}
+
+.fpp-stations-table td.actions-col {
+    white-space: nowrap;
+}
+
+.fpp-photo-box {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 64px;
+    height: 32px;
+    border: 1px solid #e1e1e1;
+    background: #fff;
+    border-radius: 4px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    font-weight: 600;
+}
+
+.fpp-station-name-input {
+    max-width: 420px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.fpp-action-btn {
+    display: inline-block;
+    padding: 4px 12px;
+    margin-left: 6px;
+    text-decoration: none;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    background: #f7f7f7;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.fpp-action-btn.update {
+    color: #135e96;
+    border-color: #135e96;
+}
+
+.fpp-action-btn.update:hover {
+    background: #135e96;
+    color: #fff;
+}
+
+.fpp-action-btn.delete {
+    color: #dc3232;
+    border-color: #dc3232;
+}
+
+.fpp-action-btn.delete:hover:not([disabled]) {
+    background: #dc3232;
+    color: #fff;
+}
+
+.fpp-action-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    position: relative;
+}
+
+.fpp-action-btn[disabled]:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 100;
+    margin-bottom: 5px;
+}
+
+.fpp-action-btn[disabled]:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: rgba(0,0,0,0.8);
+    margin-bottom: -5px;
+}
+
+.fpp-photo-link {
+    text-decoration: none;
+    color: inherit;
+}
+
+.fpp-photo-link:hover .fpp-photo-box {
+    background: #f0f0f1;
+    border-color: #999;
+    transition: all 0.2s ease;
+}
