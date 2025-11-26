@@ -306,9 +306,9 @@ function fpp_register_routes(){
         'permission_callback'=> '__return_true',
         'args' => array(
             'station_slug' => array(
-                // 'validate_callback' => function($param, $request, $key) {
-                // return is_string( $param );
-                // }
+                'validate_callback' => function($param, $request, $key) {
+                return is_string( $param );
+                }
             ),
         ),
    )); 
