@@ -101,8 +101,11 @@
 }
 
 .fpp-stations-table th.name-col {
-    width: auto;
+    width: 20em;
 }
+ .fpp-stations-table td.upload-shortcode-col input {
+    width: 20em;
+} 
 
 .fpp-stations-table th.photos-col {
     width: 60px;

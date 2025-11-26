@@ -20,7 +20,7 @@ function fpp_admin_styles($hook) {
             'fpp-admin-style', 
             plugin_dir_url(__FILE__) . 'admin-style.css', 
             array(), 
-            '1.0'
+            '1.1'
         );
         
         // Enqueue frontend styles as well for previewing shortcodes in the admin_manage
@@ -62,12 +62,13 @@ function fpp_admin_register() {
     
     if ($stations) {
         foreach ($stations as $station) {
+            
             add_submenu_page(
                 'fpp-plugin-admin',
-                'Manage Station ' . esc_html($station->id),
+                'Manage Station: ' . esc_html($station->name),
                 '(' . esc_html($station->id) . ') ' . esc_html($station->name),
                 'edit_posts',
-                'fpp-plugin-manage-' . $station->id,
+                'fpp-plugin-manage-' . $station->slug,
                 'fpp_admin_manage_render'
             );
         }
@@ -456,23 +457,24 @@ function fpp_admin_render() {
 
 function fpp_admin_manage_render() {
     global $title;
-    // Extract station ID from page slug (e.g., fpp-plugin-manage-1 → 1)
+    // Extract station slug from page slug (e.g., fpp-plugin-manage-bluebird-prairie → bluebird-prairie)
     $page_slug   = $_GET['page'] ?? '';
-    $parts       = explode( '-', $page_slug );
-    $station_id  = is_numeric( end( $parts ) ) ? end( $parts ) : 0;
+    $station_slug       = str_replace( 'fpp-plugin-manage-', "", $page_slug );
 
     // Get station name for display
     global $wpdb, $fpp_stations;
     $station_name = '';
-    if ($station_id > 0 && !empty($fpp_stations)) {
-        $station = $wpdb->get_row($wpdb->prepare("SELECT name FROM $fpp_stations WHERE id = %d", $station_id));
+    $station_id = null;
+    if (!empty($station_slug)  && !empty($fpp_stations)) {
+        $station = $wpdb->get_row($wpdb->prepare("SELECT * FROM $fpp_stations WHERE slug = %s", $station_slug));
         if ($station) {
             $station_name = esc_html($station->name);
+            $station_id = $station->id;
         }
     }
     ?>
     <div class="wrap">
-        <h1><?php echo esc_html( $title ); ?> - <?php echo $station_name; ?></h1>
+        <h1><?php echo esc_html( $title ); ?></h1>
 
         <div class="fpp-destructive-section">
             <h3>Delete All Photos</h3>
@@ -745,9 +747,10 @@ function fpp_stations_render() {
                             $fpp_stations,
                             array(
                                 'id' => $next_id,
-                                'name' => $name
+                                'name' => $name,
+                                'slug' =>  str_replace(" ", "-", strtolower($name)) 
                             ),
-                            array('%d', '%s')
+                            array('%d', '%s', '%s')
                         );
                         
                         // Create station directory
@@ -761,9 +764,10 @@ function fpp_stations_render() {
                     if (isset($_POST['station_id']) && isset($_POST['station_name'])) {
                         $wpdb->update(
                             $fpp_stations,
-                            array('name' => sanitize_text_field($_POST['station_name'])),
+                            array('name' => sanitize_text_field($_POST['station_name']),
+                                  'slug' => str_replace(" ", "-", strtolower(sanitize_text_field($_POST['station_name']))) ),
                             array('id' => intval($_POST['station_id'])),
-                            array('%s'),
+                            array('%s', '%s'),
                             array('%d')
                         );
                         add_settings_error('fpp_stations', 'station_updated', 'Station updated.', 'updated');
@@ -835,7 +839,7 @@ function fpp_stations_render() {
         </div>
 
         <!-- Existing Stations  -->
-        <div class="card">
+        <div class="">
             <h2>Existing Stations</h2>
             <table class="wp-list-table widefat fixed striped fpp-stations-table">
                 <thead>
@@ -844,6 +848,7 @@ function fpp_stations_render() {
                         <th class="name-col">Name</th>
                         <th class="photos-col">Photos</th>
                         <th style="width:180px;">Actions</th>
+                        <th class="upload-shortcode-col">Upload Shortcode</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -859,7 +864,7 @@ function fpp_stations_render() {
                             </form>
                         </td>
                         <td style="text-align:center;">
-                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=fpp-plugin-manage-' . esc_attr( $station->id ) ) ); ?>" class="fpp-photo-link">
+                            <a href="<?php echo esc_url( admin_url( 'admin.php?page=fpp-plugin-manage-' . esc_attr($station->slug) ) ); ?>" class="fpp-photo-link">
                                 <div class="fpp-photo-box" aria-label="Photo count: <?php echo esc_attr( intval( $station->photo_count ) ); ?>">
                                     <?php echo esc_html( intval( $station->photo_count ) ); ?>
                                 </div>
@@ -881,6 +886,9 @@ function fpp_stations_render() {
                                     Delete
                                 </button>
                             </form>
+                        </td>
+                        <td style="text-align:left;" class="upload-shortcode-col">
+                            <input type="text" readonly value="[fpp_upload station=<?= $station->slug ?>]"/>
                         </td>
                     </tr>
                     <?php endforeach; ?>

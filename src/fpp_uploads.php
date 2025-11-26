@@ -35,11 +35,11 @@ function fpp_generate_unique_filename(String$user_ip, int$photo_id, String$ext) 
 /** Handle the user uploads */
 function fpp_process_upload(WP_REST_Request $request) {
     global $wpdb, $fpp_stations, $fpp_photos;
-    
+    $station_slug =$request->get_param('station_slug'); 
     // Get station ID and validate it exists first
-    $station_id = $request->get_param('id');
-    $station_sql = $wpdb->prepare("SELECT * from $fpp_stations where id = %d", $station_id);
+    $station_sql = $wpdb->prepare("SELECT * from $fpp_stations where slug = %s", $station_slug);
     $station = $wpdb->get_row($station_sql);
+    $station_id = $station->id;
 
     if ($wpdb->last_error or $station == NULL) {
         error_log("Station lookup error: " . $wpdb->last_error);
@@ -300,15 +300,15 @@ function fpp_process_upload(WP_REST_Request $request) {
 
 /** Register the upload route */
 function fpp_register_routes(){
-   register_rest_route('fpp/v1', '/photo_upload/(?P<id>\d+)', array(
+   register_rest_route('fpp/v1', '/photo_upload/(?P<station_slug>[a-z0-9-]+)', array(
         'methods'=>'POST',
         'callback'=>'fpp_process_upload',
         'permission_callback'=> '__return_true',
         'args' => array(
-            'id' => array(
-                'validate_callback' => function($param, $request, $key) {
-                return is_numeric( $param );
-                }
+            'station_slug' => array(
+                // 'validate_callback' => function($param, $request, $key) {
+                // return is_string( $param );
+                // }
             ),
         ),
    )); 
