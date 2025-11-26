@@ -5,7 +5,7 @@ global $fpp_photos;
 global $fpp_stations;
 global $wpdb;
 
-$fpp_db_version = '1.2';
+$fpp_db_version = '1.6';
 $fpp_photos = $wpdb->prefix . 'fpp_photos';
 $fpp_stations = $wpdb->prefix . 'fpp_stations';
 
@@ -71,7 +71,8 @@ function fpp_install() {
     
     $stations_sql = "CREATE TABLE $fpp_stations (
         id int NOT NULL AUTO_INCREMENT,
-        name VARCHAR(255),
+        name VARCHAR(255) UNIQUE,
+        slug VARCHAR(255) UNIQUE,
         lat DECIMAL(10, 8),
         lon DECIMAL(11, 8),
         PRIMARY KEY  (id)
@@ -143,6 +144,23 @@ function version_specific_changes($from_version, $to_version) {
         );
         if ($wpdb->last_error) {
             error_log("Foreign key constraint error: " . $wpdb->last_error);
+        }
+    }
+    if ((float)$from_version < 1.6) {
+        $stations = $wpdb->get_results("SELECT * FROM $fpp_stations ORDER BY id ASC");
+    
+        if ($stations) {
+            foreach ($stations as $station) {
+                $station_slug = str_replace(" ", "-", strtolower($station->name));
+                
+                $wpdb->update(
+                    $fpp_stations,
+                    array('slug' => $station_slug),
+                    array('id' => $station->id),
+                    array('%s'),
+                    array('%d')
+                );
+            }
         }
     }
 }

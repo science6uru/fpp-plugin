@@ -2,14 +2,14 @@
 $site_key = get_option('fpp_recaptcha_site_key');
 ?>
 
-<form id="fpp-upload-form" action="/?rest_route=/fpp/v1/photo_upload/<?=$station_id?>" method="post" enctype="multipart/form-data">
+<form id="fpp-upload-form" action="/?rest_route=/fpp/v1/photo_upload/<?=$station_slug?>" method="post" enctype="multipart/form-data">
   
 <div class="fpp_container">
   <div class="card" id="file-selector">
     <!-- <h3>Photo Submission</h3> -->
     <div class="drop_box">
       <header>
-        <h4>Photo Submission</h4>
+        <h4 style="text-align:center;">Photo Submission for <?= $station_name ?> </h4>
       </header>
       <p>Files Supported: JPEG, HEIC</p>
       <input type="file" accept=".jpg,.heic,image/jpeg,image/heic" id="file-upload" name="user_photo" hidden style="display:none;"/>

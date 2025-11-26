@@ -9,7 +9,11 @@ function fpp_frontend_styles() {
 }
 
 function fpp_template_render($atts, $content, $shortcode_tag) {
-    $station_id = $atts["station_id"] ?? ''; // Idk figure out how to handle default later
+    global $wpdb, $fpp_stations;
+    $station_slug = $atts["station"] ?? ''; // Idk figure out how to handle default later
+    $station = $wpdb->get_row($wpdb->prepare("SELECT * FROM $fpp_stations WHERE slug = %s", $station_slug));
+    $station_name = $station->name;
+
     wp_enqueue_script( $shortcode_tag );
     wp_enqueue_style( $shortcode_tag  );
 
