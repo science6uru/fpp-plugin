@@ -23,6 +23,11 @@ function fpp_get_user_ip() {
     return "";
 }
 
+function fpp_get_slug_page_link($slug){
+  $post = get_page_by_path($slug, OBJECT, 'page');
+  return get_permalink($post->ID);
+}
+
 /**
  * Generates a unique filename for photos uploaded to FPP stations.
  * @return String
@@ -48,9 +53,7 @@ function fpp_process_upload(WP_REST_Request $request) {
         ), 404);
     }
 
-    $custom_base_dir = get_option('fpp_images_base_dir');
-    $upload_base = !empty($custom_base_dir) ? $custom_base_dir : (wp_upload_dir()['basedir'] . '/fpp-plugin');
-    $target_dir = $upload_base . '/station-' . $station_id;
+    $target_dir = fpp_photos_dir($station_id);
     
     if (!is_dir($target_dir)) {
         return new WP_REST_Response(array(
@@ -169,22 +172,6 @@ function fpp_process_upload(WP_REST_Request $request) {
         }
         $photo_id = $wpdb->insert_id;
 
-        $custom_base_dir = get_option('fpp_images_base_dir');
-        $upload_base = !empty($custom_base_dir) ? $custom_base_dir : (wp_upload_dir()['basedir'] . '/fpp-plugin');
-        $target_dir = $upload_base . '/station-' . $station_id;
-        
-        if (!is_dir($target_dir)) {
-            return new WP_REST_Response(array(
-                'error' => 'Upload directory does not exist.',
-            ), 500);
-        }
-
-        if (!is_writable($target_dir)) {
-            return new WP_REST_Response(array(
-                'error' => 'Upload directory is not writable.',
-            ), 500);
-        }
-
         $overrides = array(
             'test_form' => false,
             'test_type' => true,
@@ -217,19 +204,10 @@ function fpp_process_upload(WP_REST_Request $request) {
 
         // Apply filter to override upload path
         add_filter('upload_dir', function($dirs) use ($station_id) {
-            $custom_base_dir = get_option('fpp_images_base_dir');
-            $subdir_prefix = '';
-            if (!empty($custom_base_dir)) {
-                $dirs['basedir'] = rtrim($custom_base_dir, '/');
-                $base_relative = str_replace( ABSPATH, '', $dirs['basedir'] );
-                $dirs['baseurl'] = trailingslashit( site_url() ) . ltrim( $base_relative, '/' );
-                // Removed wp_mkdir_p call so it's more under control by admin
-            } else {
-                $subdir_prefix = '/fpp-plugin';
-            }
-            $dirs['subdir'] = $subdir_prefix . '/station-' . $station_id;
-            $dirs['path'] = $dirs['basedir'] . $dirs['subdir'];
-            $dirs['url']  = $dirs['baseurl'] . $dirs['subdir'];
+            // Removed wp_mkdir_p call so it's more under control by admin
+            $dirs['subdir'] = fpp_photo_subdir($station_id);
+            $dirs['path'] = $dirs['basedir'] . "/" . $dirs['subdir'];
+            $dirs['url']  = $dirs['baseurl'] . "/" . $dirs['subdir'];
             return $dirs;
         });
 
@@ -246,6 +224,16 @@ function fpp_process_upload(WP_REST_Request $request) {
                 return new WP_REST_Response(array(
                     'error' => "Internal Server Error: Could not persist data",
                 ), 500);
+            }
+            if (isset($_POST["return_url"])) {
+                $return_url = htmlspecialchars_decode($_POST['return_url']);
+                $upload_param = str_contains($return_url, "?") ? "&uploaded=success" : "?uploaded=success";
+                header("Location:".$return_url . $upload_param);
+                exit();
+            }
+            if (!empty($station->upload_page_slug)) {
+                header("Location:".fpp_get_slug_page_link($station->upload_page_slug). "?uploaded=true");
+                exit();
             }
             return new WP_REST_Response(array(
                 'message' => 'File uploaded successfully!',
@@ -269,6 +257,7 @@ function fpp_process_upload(WP_REST_Request $request) {
             'error' => "Internal Server Error {$e->getMessage()}",
         ), 500);
     }
+
 
 /*
 
