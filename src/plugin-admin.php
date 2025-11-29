@@ -9,6 +9,23 @@
 
 add_action('admin_enqueue_scripts', 'fpp_admin_styles');
 
+function fpp_in_place_redirect() {
+    // Get the current protocol (http or https)
+    $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
+
+    // Get the current hostname
+    $host = $_SERVER['HTTP_HOST'];
+
+    // Get the current request URI (path and query string)
+    $uri = $_SERVER['REQUEST_URI'];
+
+    // Construct the full current URL
+    $current_url = "{$protocol}://{$host}{$uri}";
+
+    header("Location:" . $current_url );
+    exit();
+}
+
 function fpp_admin_styles($hook) {
     $current_screen = get_current_screen();
     
@@ -20,15 +37,7 @@ function fpp_admin_styles($hook) {
             'fpp-admin-style', 
             plugin_dir_url(__FILE__) . 'admin-style.css', 
             array(), 
-            '1.1'
-        );
-        
-        // Enqueue frontend styles as well for previewing shortcodes in the admin_manage
-        wp_enqueue_style(
-            'fpp-frontend-style', 
-            plugin_dir_url(__FILE__) . 'frontend-style.css', 
-            array(), 
-            '1.0'
+            '1.4'
         );
     }
 }
@@ -186,7 +195,7 @@ function fpp_sanitize_max_upload_size_mb( $value ) {
 function fpp_sanitize_images_base_dir($value) {
     // If saved empty or invalid, use default path
     $trimmed = is_scalar($value) ? trim((string)$value) : '';
-    $default = wp_upload_dir()['basedir'] . '/fpp-plugin';
+    $default = 'fpp-plugin';
     
     if ($trimmed === '') {
         return $default;
@@ -194,17 +203,8 @@ function fpp_sanitize_images_base_dir($value) {
 
     // Ensure path is absolute and normalize separators
     $path = wp_normalize_path($trimmed);
-    if (!path_is_absolute($path)) {
-        return $default;
-    }
 
-    // Basic security: prevent paths outside WP uploads
-    $uploads_base = wp_normalize_path(wp_upload_dir()['basedir']);
-    if (strpos($path, $uploads_base) !== 0) {
-        return $default;
-    }
-
-    return $path;
+    return trim($path, "/");
 }
 
 function fpp_recaptcha_section_callback() {
@@ -248,9 +248,10 @@ function fpp_images_base_dir_callback() {
     global $wpdb, $fpp_stations;
 
     $value = get_option('fpp_images_base_dir', '');
-    $default = wp_upload_dir()['basedir'] . '/fpp-plugin';
+    $default = 'fpp-plugin';
     
-    $dir_to_check = empty($value) ? $default : $value;
+    $path_to_check = empty($value) ? $default : $value;
+    $dir_to_check = wp_upload_dir()['basedir'] . "/" . $path_to_check;
     $exists = fpp_check_dir_exists($dir_to_check);
     $is_writable = fpp_check_dir_writable($dir_to_check);
     $stations_table = !empty($fpp_stations) ? $fpp_stations : $wpdb->prefix . 'fpp_stations';
@@ -331,9 +332,12 @@ function fpp_images_base_dir_callback() {
     </script>
     
     <div class="fpp-settings-field">
-        <input type="text" id="fpp_images_base_dir" name="fpp_images_base_dir" value="<?php echo esc_attr($value); ?>" placeholder="<?php echo esc_attr($default); ?>" class="regular-text" />
+        <div class="input-container">
+            <span class="prefix-text"><?= wp_upload_dir()["basedir"] ?>/</span>
+            <input type="text" id="fpp_images_base_dir" name="fpp_images_base_dir" value="<?php echo esc_attr($value); ?>" placeholder="<?php echo esc_attr($default); ?>" class="regular-text" />
+        </div>
         <?php echo $warning_html; ?>
-        <p class="description">This is where uploaded photos will be stored.</p>
+        <p class="description">This is where uploaded photos will be stored. <br/>(Relative to WP base uploads dir: <?= wp_upload_dir()["basedir"] ?>)</p>
     </div>
     <?php
     
@@ -474,13 +478,13 @@ function fpp_admin_manage_render() {
     }
     ?>
     <div class="wrap">
-        <h1><?php echo esc_html( $title ); ?></h1>
+        <!-- <h1><?php echo esc_html( $title ); ?></h1>
 
         <div class="fpp-destructive-section">
             <h3>Delete All Photos</h3>
             <p><strong>Warning:</strong> This action will permanently delete all photos for this station from the database and file system. This cannot be undone.</p>
             <button type="button" id="delete-all-photos-btn" class="fpp-action-btn delete" onclick="deleteAllPhotos(<?php echo $station_id; ?>)">Delete All Photos</button>
-        </div>
+        </div> -->
 
         <script>
         function deleteAllPhotos(stationId) {
@@ -561,8 +565,7 @@ add_action('wp_ajax_fpp_delete_station_photos', function() {
         return;
     }
 
-    $base_dir = get_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp-plugin');
-    $station_dir = rtrim($base_dir, '/') . '/station-' . $station_id;
+    $station_dir = fpp_photos_dir($station_id);
 
     if (!is_dir($station_dir)) {
         wp_send_json_error('Station directory not found');
@@ -648,8 +651,7 @@ add_action('wp_ajax_fpp_sync_station_folders', function() {
     }
 
     // Only target the configured base dir
-    $configured = get_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp-plugin');
-    $configured = rtrim($configured, '/');
+    $configured = fpp_photos_dir();
     $path = rtrim($path, '/');
     if ($path !== $configured) {
         wp_send_json_error('Path mismatch with configured base directory.');
@@ -720,12 +722,14 @@ add_action('wp_ajax_fpp_sync_station_folders', function() {
     wp_send_json_success(empty($parts) ? "No changes needed" : implode('; ', $parts));
 });
 
-function fpp_stations_render() {
-    global $wpdb, $fpp_stations;
-
-    // Handle form submissions
-    if (isset($_POST['action'])) {
-        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), 'fpp_stations_nonce' ) ) {
+function fpp_check_admin_post() {
+    global $wpdb, $fpp_stations, $fpp_photos;
+    if (isset($_POST['action']) && in_array($_POST['action'] , ['add_station', 'update_station', 'delete_station', 'update_station_upload_slug', 'fpp_photo_update_status'])) {
+        $nonce_action = "fpp_stations_nonce";
+        if (in_array($_POST['action'], ['fpp_photo_update_status'])) {
+            $nonce_action = 'fpp_photo_manage';
+        }
+        if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), $nonce_action ) ) {
             add_settings_error(
                 'fpp_stations',
                 'nonce_fail',
@@ -754,8 +758,7 @@ function fpp_stations_render() {
                         );
                         
                         // Create station directory
-                        $upload_dir = get_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp-plugin');
-                        wp_mkdir_p($upload_dir . '/station-' . $next_id);
+                        wp_mkdir_p(fpp_photos_dir($next_id));
                         add_settings_error('fpp_stations', 'station_added', 'Station added.', 'updated');
                     }
                     break;
@@ -768,6 +771,19 @@ function fpp_stations_render() {
                                   'slug' => str_replace(" ", "-", strtolower(sanitize_text_field($_POST['station_name']))) ),
                             array('id' => intval($_POST['station_id'])),
                             array('%s', '%s'),
+                            array('%d')
+                        );
+                        add_settings_error('fpp_stations', 'station_updated', 'Station updated.', 'updated');
+                    }
+                    break;
+
+                case 'update_station_upload_slug':
+                    if (isset($_POST['station_id']) && isset($_POST['station_upload_slug'])) {
+                        $wpdb->update(
+                            $fpp_stations,
+                            array('upload_page_slug' => sanitize_text_field($_POST['station_upload_slug'])),
+                            array('id' => intval($_POST['station_id'])),
+                            array('%s'),
                             array('%d')
                         );
                         add_settings_error('fpp_stations', 'station_updated', 'Station updated.', 'updated');
@@ -797,8 +813,7 @@ function fpp_stations_render() {
                                 add_settings_error('fpp_stations', 'delete_failed', 'Failed to delete station (DB error).', 'error');
                             } else {
                                 // Remove station directory if empty
-                                $upload_dir = get_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp-plugin');
-                                $station_dir = $upload_dir . '/station-' . $station_id;
+                                $station_dir = fpp_photos_dir($station_id);
                                 if (is_dir($station_dir) && (glob($station_dir . '/*') === false || count(glob($station_dir . '/*')) === 0)) {
                                     @rmdir($station_dir);
                                 }
@@ -807,9 +822,30 @@ function fpp_stations_render() {
                         }
                     }
                     break;
+                case 'fpp_photo_update_status':
+                    $status = $_POST['fpp_photo_status'];
+                    $id = $_POST['fpp_photo_id'];
+                    $wpdb->update(
+                        $fpp_photos,
+                        array('status' => sanitize_text_field($status)),
+                        array('id' => intval($id)),
+                        array('%s'),
+                        array('%d')
+                    );
+                    break;
             }
+            fpp_in_place_redirect();
         }
     }
+}
+add_action( 'admin_init', 'fpp_check_admin_post' );
+
+
+function fpp_stations_render() {
+    global $wpdb, $fpp_stations;
+
+    // Handle form submissions
+    
 
     // Get current stations
     $stations = $wpdb->get_results("SELECT s.*, COUNT(p.id) as photo_count 
@@ -847,6 +883,7 @@ function fpp_stations_render() {
                         <th style="width:20px;">ID</th>
                         <th class="name-col">Name</th>
                         <th class="photos-col">Photos</th>
+                        <th class="slug-col">Upload Page Slug</th>
                         <th style="width:180px;">Actions</th>
                         <th class="upload-shortcode-col">Upload Shortcode</th>
                     </tr>
@@ -869,6 +906,14 @@ function fpp_stations_render() {
                                     <?php echo esc_html( intval( $station->photo_count ) ); ?>
                                 </div>
                             </a>
+                        </td>
+                        <td>
+                            <form method="post" action="" style="display:inline; width:100%;" id="form-station-<?php echo esc_attr($station->id); ?>">
+                                <?php wp_nonce_field('fpp_stations_nonce'); ?>
+                                <input type="hidden" name="action" value="update_station_upload_slug">
+                                <input type="hidden" name="station_id" value="<?php echo esc_attr($station->id); ?>">
+                                <input type="text" name="station_upload_slug" value="<?php echo esc_attr($station->upload_page_slug); ?>" class="fpp-station-slug-input">
+                            </form>
                         </td>
                         <td class="actions-col">
                             <button type="submit" form="form-station-<?php echo esc_attr($station->id); ?>" class="fpp-action-btn update">Update</button>
@@ -903,4 +948,31 @@ function fpp_stations_render() {
     </div>
     <?php
 }
+add_action( 'pre_get_posts', 'fpp_search_exclude_filter' );
+function fpp_search_exclude_filter($query) {
+    /*
+    This function excludes the fpp upload pages from search results.
+    */
+    global $wpdb, $fpp_stations;
+    if (! $query->is_admin && $query->is_search && $query->is_main_query()) {
+        $excluded_slugs = $wpdb->get_col("SELECT upload_page_slug FROM $fpp_stations");
+
+        // Get the IDs of the pages based on their slugs
+        $excluded_ids = array();
+        foreach ($excluded_slugs as $slug) {
+            $page = get_page_by_path($slug, OBJECT, 'page');
+            if ($page) {
+                $excluded_ids[] = $page->ID;
+            }
+        }
+
+        // Get any existing exclusions and merge them
+        $existing_exclusions = (array) $query->get('post__not_in');
+        $merged_exclusions = array_merge($existing_exclusions, $excluded_ids);
+
+        // Set the merged exclusions back into the query
+        $query->set('post__not_in', $merged_exclusions);
+    }
+}
+
 ?>

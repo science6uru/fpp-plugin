@@ -5,7 +5,7 @@ global $fpp_photos;
 global $fpp_stations;
 global $wpdb;
 
-$fpp_db_version = '1.6';
+$fpp_db_version = '1.8';
 $fpp_photos = $wpdb->prefix . 'fpp_photos';
 $fpp_stations = $wpdb->prefix . 'fpp_stations';
 
@@ -13,7 +13,7 @@ function fpp_install_data() {
     global $wpdb, $fpp_stations;
 
     // Scan for existing station directories
-    $upload_dir = get_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp-plugin');
+    $upload_dir = fpp_photos_dir();
     $pattern = $upload_dir . '/station-*';
     $existing_dirs = glob($pattern, GLOB_ONLYDIR);
     
@@ -62,8 +62,7 @@ function fpp_install() {
         station_id int NOT NULL,
         ip varchar(55) NOT NULL,
         file_name varchar(32) NOT NULL UNIQUE,
-        approved tinyint(1) NOT NULL DEFAULT 0,
-        rejected tinyint(1) NOT NULL DEFAULT 0,
+        status enum('unreviewed', 'approved', 'rejected') NOT NULL default 'unreviewed',
         created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY  (id)
@@ -73,6 +72,7 @@ function fpp_install() {
         id int NOT NULL AUTO_INCREMENT,
         name VARCHAR(255) UNIQUE,
         slug VARCHAR(255) UNIQUE,
+        upload_page_slug VARCHAR(64) NOT NULL default '',
         lat DECIMAL(10, 8),
         lon DECIMAL(11, 8),
         PRIMARY KEY  (id)
@@ -99,7 +99,7 @@ function fpp_install() {
 
 function ensure_default_options() {
 	if (get_option('fpp_images_base_dir', false) === false) {
-		add_option('fpp_images_base_dir', wp_upload_dir()['basedir'] . '/fpp_images');
+		add_option('fpp_images_base_dir', 'fpp_images');
 	}
 	if (get_option('fpp_db_version', false) === false) {
 		add_option('fpp_db_version', '0.0');
@@ -181,4 +181,19 @@ function fpp_update_db_check() {
 }
 add_action( 'plugins_loaded', 'fpp_update_db_check' );
 
+
+function fpp_photo_subdir(int $station_id = -1) {
+    $fpp_dir = get_option('fpp_images_base_dir', 'fpp-plugin');
+    if ($station_id > 0) {
+        return $fpp_dir . "/station-$station_id";
+    }
+    return $fpp_dir;
+}
+
+function fpp_photos_dir(int $station_id = -1) {
+    return wp_upload_dir()['basedir'] . "/" . fpp_photo_subdir($station_id);
+}
+function fpp_photos_uri(int $station_id = -1) {
+    return wp_upload_dir()['baseurl'] . "/" . fpp_photo_subdir($station_id);
+}
 ?>

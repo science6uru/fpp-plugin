@@ -1,5 +1,145 @@
-This is the <b>manage</b> Page for station <?= $station_name ?>
-<br />
+<?php
+class PhotosAdminTable extends WP_List_Table
+{
+	private $station_id;
+	private $basedir;
+	private $nonce_field;
+	public function __construct($station_id)
+	{
+		$this->nonce_field = wp_nonce_field('fpp_photo_manage');
+		$this->basedir = fpp_photos_uri($station_id);
+		$this->station_id = $station_id;
+		parent::__construct([
+			'singular' => 'photo', // singular name of the listed records
+			'plural'   => 'photos', // plural name of the listed records
+			'ajax'     => true      // does this table support ajax?
+		]);
+		$this->_column_headers = array( 
+			$this->get_columns(),		// columns
+			array(),			// hidden
+			$this->get_sortable_columns(),	// sortable
+		);
+	}
+	public function get_columns()
+	{
+		$columns = [
+			'cb'      => '<input type="checkbox" />', // Checkbox column
+			'thumbnail'    => 'Image',
+			'status'     => 'Status',
+			'ip' => 'IP Address',
+			'created' => 'Uploaded'
+		];
+		return $columns;
+	}
+	public function get_sortable_columns()
+	{
+		$sortable_columns = [
+			'created' => ['created', false], // sortable true, default order ascending
+			'status'  => ['status', false],
+			'ip'  => ['ip', false],
+		];
+		return $sortable_columns;
+	}
+	public function column_default($item, $column_name)
+	{
+		switch ($column_name) {
+			case 'thumbnail':
+				$filename = $this->basedir . "/" . $item['file_name'];
+				return "<img height='100' src='$filename'/>";
+			case 'status':
+				$status = $item["status"];
+				$id = $item["id"];
+				$nonce = $this->nonce_field;
+				$action = "<input name='action' hidden value='fpp_photo_update_status'/>";
+				$id_field = "<input name='fpp_photo_id' hidden value='$id'/>";
+				$buttons = "";
+				
+				$buttons .= "<button class='fpp_photo_approve_btn' ". disabled("approved", $status, false) ." name='fpp_photo_status' value='approved'>Approve</button>";
+				$buttons .= "<button class='fpp_photo_reject_btn' ". disabled("rejected", $status, false) ." name='fpp_photo_status' value='rejected'>Reject</button>";
+				return "<form method='post'>$nonce $action $id_field $buttons</form>";
+			case 'ip':
+			case 'created':
+				return $item[$column_name];
+			case 'cb':
+				return "<input type='checkbox'/>";
+			default:
+				return print_r($item, true); // Show the whole array for troubleshooting purposes
+		}
+	}
+	function column_cb( $item ) {
+		return sprintf(
+			'<input type="checkbox" name="element[]" value="%s" />',
+			$item['id'] // Replace 'id' with the unique identifier of your data item
+		);
+	}
+	function extra_tablenav( $which ) {
+		if ( 'top' === $which || true) {
+			?>
+			<div class="alignleft bulkactions">
+				<?php
+				// Example: A dropdown for filtering by a custom 'status' meta key
+				$status = $_GET['status'] ?? '';
+				?>
+				<form method="get">
+					<input name="page" hidden value='<?= $_REQUEST["page"] ?>' style="display:none;"/>
+					<select name="status" id="status" onchange="submit()">
+						<option value="unreviewed">Not Yet Reviewed</option>
+						<option value="all" <?php selected( $status, 'all' ); ?>>All Photos</option>
+						<option value="approved" <?php selected( $status, 'approved' ); ?>>Approved</option>
+						<option value="rejected" <?php selected( $status, 'rejected' ); ?>>Rejected</option>
+					</select>
+				<?php
+				// The "Filter" button is required for core functionality to work correctly with custom filters
+				submit_button( 'Filter', 'secondary', 'filter_action', false );
+				?>
+				</form>
+
+			</div>
+			<?php
+		}
+	}
+	public function prepare_items()
+	{
+
+		global $wpdb, $fpp_photos;
+		$this->_column_headers = $this->get_column_info();
+		$orderby = array_key_exists("orderby", $_GET) ? $_GET["orderby"] : "created";
+		$order = array_key_exists("order", $_GET) ? $_GET["order"] : "desc";
+		$status = array_key_exists("status", $_GET) ? $_GET["status"] : "unreviewed";
+		$status_where = '';
+		if(in_array($status, ['unreviewed', 'approved', 'rejected'])) {
+			$status_where = "and status = '{$status}'";
+		}
+		if (!in_array($order, ["asc", "desc", "ASC", "DESC"])) {
+			$order = "desc";
+		}
+		if (!array_key_exists($orderby, $this->get_sortable_columns())) {
+			$orderby = "created";
+		}
+		$where_clause = "station_id = {$this->station_id} {$status_where}";
+
+		$row_count = $wpdb->get_var( "SELECT COUNT(*) FROM {$fpp_photos} where {$where_clause}" );
+
+		$per_page     = 10;
+		$current_page = $this->get_pagenum();
+		$total_items  = $row_count;
+		$this->set_pagination_args([
+			'total_items' => $total_items,
+			'per_page'    => $per_page,
+		]);
+		$offset = ($current_page - 1) * $per_page;
+
+	    $this->items = $wpdb->get_results("SELECT * FROM {$fpp_photos} where {$where_clause} ORDER BY {$orderby} {$order} LIMIT {$offset}, {$per_page}", ARRAY_A);
+	}
+}
+$photos_table = new PhotosAdminTable($station_id);
+$photos_table->prepare_items();
+?>
+
+<div class="wrap fpp-photos-table">
+	<h2>Manage Photos For <?= $station_name ?></h2>
+	<?php $photos_table->display(); ?>
+</div>
 <?php require plugin_dir_path(__FILE__) . "fpp-plugin-fpp_carousel.php" ?>
 
 <?php
@@ -14,4 +154,7 @@ print "fpp db version is" . get_option('fpp_db_version');
 echo 'upload_max_filesize: ' . ini_get('upload_max_filesize') . '<br>';
 echo 'post_max_size: ' . ini_get('post_max_size') . '<br>';
 echo 'memory_limit: ' . ini_get('memory_limit') . '<br>';
+
+
 ?>
+

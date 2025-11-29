@@ -2,12 +2,6 @@
 add_shortcode("fpp_upload", "fpp_template_render");
 add_shortcode("fpp_carousel", "fpp_template_render");
 
-add_action('wp_enqueue_scripts', 'fpp_frontend_styles');
-
-function fpp_frontend_styles() {
-    wp_enqueue_style('fpp-frontend-style', plugin_dir_url(__FILE__) . 'frontend-style.css', array(), '1.0');
-}
-
 function fpp_template_render($atts, $content, $shortcode_tag) {
     global $wpdb, $fpp_stations;
     $station_slug = $atts["station"] ?? ''; // Idk figure out how to handle default later
