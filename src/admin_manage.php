@@ -4,11 +4,15 @@ class PhotosAdminTable extends WP_List_Table
 	private $station_id;
 	private $basedir;
 	private $nonce_field;
+	private $current_status;
+	
 	public function __construct($station_id)
 	{
 		$this->nonce_field = wp_nonce_field('fpp_photo_manage');
 		$this->basedir = fpp_photos_uri($station_id);
 		$this->station_id = $station_id;
+		$this->current_status = $_GET['status'] ?? 'unreviewed';
+		
 		parent::__construct([
 			'singular' => 'photo', // singular name of the listed records
 			'plural'   => 'photos', // plural name of the listed records
@@ -29,6 +33,12 @@ class PhotosAdminTable extends WP_List_Table
 			'ip' => 'IP Address',
 			'created' => 'Uploaded'
 		];
+		
+		// only when filtering by rejected status
+		if ($this->current_status === 'rejected') {
+			$columns['delete'] = 'Delete';
+		}
+		
 		return $columns;
 	}
 	public function get_sortable_columns()
@@ -57,6 +67,12 @@ class PhotosAdminTable extends WP_List_Table
 				$buttons .= "<button class='fpp_photo_approve_btn' ". disabled("approved", $status, false) ." name='fpp_photo_status' value='approved'>Approve</button>";
 				$buttons .= "<button class='fpp_photo_reject_btn' ". disabled("rejected", $status, false) ." name='fpp_photo_status' value='rejected'>Reject</button>";
 				return "<form method='post'>$nonce $action $id_field $buttons</form>";
+			case 'delete':
+				$id = $item["id"];
+				$nonce = $this->nonce_field;
+				$action = "<input name='action' hidden value='fpp_photo_delete'/>";
+				$id_field = "<input name='fpp_photo_id' hidden value='$id'/>";
+				return "<form method='post'>$nonce $action $id_field <button class='button button-secondary' type='submit' onclick='return confirm(\"Are you sure you want to delete this photo?\")'>Delete</button></form>";
 			case 'ip':
 			case 'created':
 				return $item[$column_name];
@@ -157,4 +173,3 @@ echo 'memory_limit: ' . ini_get('memory_limit') . '<br>';
 
 
 ?>
-
