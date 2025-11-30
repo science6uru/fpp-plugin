@@ -1,9 +1,9 @@
 <?php
 /*
-Plugin Name: FPP
+Plugin Name: Photolog
 Description: Fixed-Point Photography Time Lapse
 Version: 1.0
-Author: Science6uru
+Author: Andrew Owen
 License: GPLv2 or later
 */
 

@@ -851,9 +851,10 @@ function fpp_check_admin_post() {
                     
                     if ($photo) {
                         $station_id = intval($photo->station_id);
-                        $file_path = fpp_photo_file_path($station_id, $photo->filename);
-                        
-                        // Delete from DB
+                        $file_path = fpp_photo_file_path($station_id, $photo->file_name);
+                        $thumb_path = fpp_photo_file_path($station_id, $photo->thumb_200);
+
+                        //Delete from DB
                         $wpdb->delete(
                             $fpp_photos,
                             array('id' => intval($id)),
@@ -863,6 +864,9 @@ function fpp_check_admin_post() {
                         // Delete from fs
                         if (file_exists($file_path)) {
                             @unlink($file_path);
+                        }
+                        if (file_exists($thumb_path)) {
+                            @unlink($thumb_path);
                         }
                     }
                     break;
