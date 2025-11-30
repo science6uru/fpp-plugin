@@ -5,7 +5,7 @@ global $fpp_photos;
 global $fpp_stations;
 global $wpdb;
 
-$fpp_db_version = '1.8';
+$fpp_db_version = '1.9';
 $fpp_photos = $wpdb->prefix . 'fpp_photos';
 $fpp_stations = $wpdb->prefix . 'fpp_stations';
 
@@ -62,6 +62,7 @@ function fpp_install() {
         station_id int NOT NULL,
         ip varchar(55) NOT NULL,
         file_name varchar(32) NOT NULL UNIQUE,
+        thumb_200 varchar(38),
         status enum('unreviewed', 'approved', 'rejected') NOT NULL default 'unreviewed',
         created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -109,6 +110,9 @@ function ensure_default_options() {
 	}
 	if (get_option('fpp_max_upload_size_mb', false) === false) {
 		add_option('fpp_max_upload_size_mb', '8.0');
+	}
+	if (get_option('fpp_reconcile_resize_count', false) === false) {
+		add_option('fpp_reconcile_resize_count', '5');
 	}
 }
 
@@ -178,8 +182,22 @@ function fpp_update_db_check() {
         update_option( 'fpp_db_version', $fpp_db_version );
 
     }
+    fpp_reconcile();
 }
 add_action( 'plugins_loaded', 'fpp_update_db_check' );
+
+
+
+function fpp_reconcile() {
+    global $wpdb, $fpp_photos;
+    $limit = (int)get_option('fpp_reconcile_resize_count', 3);
+
+	$photos = $wpdb->get_results("SELECT * FROM {$fpp_photos} where thumb_200 is NULL LIMIT $limit");
+
+    foreach ($photos as $photo) {
+        fpp_generate_thumbnail($photo);
+    }
+}
 
 
 function fpp_photo_subdir(int $station_id = -1) {

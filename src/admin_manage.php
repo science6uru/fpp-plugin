@@ -44,8 +44,8 @@ class PhotosAdminTable extends WP_List_Table
 	{
 		switch ($column_name) {
 			case 'thumbnail':
-				$filename = $this->basedir . "/" . $item['file_name'];
-				return "<img height='100' src='$filename'/>";
+				$thumbname = $this->basedir . "/" . $item['thumb_200'];
+				return "<img src='$thumbname'/>";
 			case 'status':
 				$status = $item["status"];
 				$id = $item["id"];

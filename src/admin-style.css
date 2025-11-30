@@ -291,3 +291,31 @@
   line-height: 1;
   flex-grow: 1; /* Allows the input field to take up available space */
 }
+
+
+@media (min-width: 992px) {
+    .wp-list-table .column-thumbnail { 
+        width: 270px !important; 
+        img {
+            height: 200px;
+        }
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .wp-list-table .column-thumbnail { 
+        width: 200px !important; 
+        img {
+            height: 150px;
+        }
+    }
+}
+
+@media (max-width: 767px) {
+    .wp-list-table .column-thumbnail { 
+        width: 135px !important; 
+        img {
+            height: 100px;
+        }
+    }
+}
