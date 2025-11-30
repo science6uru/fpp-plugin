@@ -20,7 +20,7 @@ services:
     volumes:
       - ../..:/workspaces:cached
       # - wordpress:/var/www/html
-      - ../src/:/var/www/html/wp-content/plugins/plugin-dev
+      - ../src/:/var/www/html/wp-content/plugins/photolog
  
   db:
     image: mariadb:10.4

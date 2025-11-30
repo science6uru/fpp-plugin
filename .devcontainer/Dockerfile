@@ -105,7 +105,7 @@ USER www-data
 RUN wp core download
 
 #add dirs for plugin and theme dev
-RUN mkdir -p /var/www/html/wp-content/plugins/plugin-dev; \
+RUN mkdir -p /var/www/html/wp-content/plugins/photolog; \
 	mkdir -p /var/www/html/wp-content/themes/theme-dev;
 
 USER root
