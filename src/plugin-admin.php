@@ -770,12 +770,22 @@ function fpp_check_admin_post() {
 
                 case 'update_station':
                     if (isset($_POST['station_id']) && isset($_POST['station_name'])) {
+                        $update_data = array('name' => sanitize_text_field($_POST['station_name']));
+                        $update_format = array('%s');
+                        
+                        if (isset($_POST['station_upload_slug'])) {
+                            $update_data['upload_page_slug'] = sanitize_text_field($_POST['station_upload_slug']);
+                            $update_format[] = '%s';
+                        }
+                        
+                        $update_data['slug'] = str_replace(" ", "-", strtolower(sanitize_text_field($_POST['station_name'])));
+                        $update_format[] = '%s';
+                        
                         $wpdb->update(
                             $fpp_stations,
-                            array('name' => sanitize_text_field($_POST['station_name']),
-                                  'slug' => str_replace(" ", "-", strtolower(sanitize_text_field($_POST['station_name']))) ),
+                            $update_data,
                             array('id' => intval($_POST['station_id'])),
-                            array('%s', '%s'),
+                            $update_format,
                             array('%d')
                         );
                         add_settings_error('fpp_stations', 'station_updated', 'Station updated.', 'updated');
@@ -932,7 +942,6 @@ function fpp_stations_render() {
                                 <input type="hidden" name="action" value="update_station">
                                 <input type="hidden" name="station_id" value="<?php echo esc_attr($station->id); ?>">
                                 <input type="text" name="station_name" value="<?php echo esc_attr($station->name); ?>" class="fpp-station-name-input">
-                            </form>
                         </td>
                         <td style="text-align:center;">
                             <a href="<?php echo esc_url( admin_url( 'admin.php?page=fpp-plugin-manage-' . esc_attr($station->slug) ) ); ?>" class="fpp-photo-link">
@@ -942,15 +951,11 @@ function fpp_stations_render() {
                             </a>
                         </td>
                         <td>
-                            <form method="post" action="" style="display:inline; width:100%;" id="form-station-<?php echo esc_attr($station->id); ?>">
-                                <?php wp_nonce_field('fpp_stations_nonce'); ?>
-                                <input type="hidden" name="action" value="update_station_upload_slug">
-                                <input type="hidden" name="station_id" value="<?php echo esc_attr($station->id); ?>">
                                 <input type="text" name="station_upload_slug" value="<?php echo esc_attr($station->upload_page_slug); ?>" class="fpp-station-slug-input">
-                            </form>
                         </td>
                         <td class="actions-col">
                             <button type="submit" form="form-station-<?php echo esc_attr($station->id); ?>" class="fpp-action-btn update">Update</button>
+                            </form>
                             <form method="post" action="" style="display:inline">
                                 <?php wp_nonce_field('fpp_stations_nonce'); ?>
                                 <input type="hidden" name="action" value="delete_station">
