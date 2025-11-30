@@ -8,6 +8,7 @@
  */
 
 add_action('admin_enqueue_scripts', 'fpp_admin_styles');
+add_action('admin_enqueue_scripts', 'fpp_admin_scripts');
 
 function fpp_in_place_redirect() {
     // Get the current protocol (http or https)
@@ -26,6 +27,16 @@ function fpp_in_place_redirect() {
     exit();
 }
 
+function fpp_admin_scripts($hook) {
+    wp_enqueue_script(
+        'fpp-admin-js', 
+        plugins_url( '/js/admin.js', __FILE__ ),
+        ['jquery'], 
+        false,
+        true
+    );
+}
+
 function fpp_admin_styles($hook) {
     $current_screen = get_current_screen();
     
@@ -37,7 +48,7 @@ function fpp_admin_styles($hook) {
             'fpp-admin-style', 
             plugin_dir_url(__FILE__) . 'admin-style.css', 
             array(), 
-            '1.4'
+            '1.5'
         );
     }
 }
@@ -395,7 +406,7 @@ function fpp_images_base_dir_callback() {
             <input type="text" id="fpp_images_base_dir" name="fpp_images_base_dir" value="<?php echo esc_attr($value); ?>" placeholder="<?php echo esc_attr($default); ?>" class="regular-text" />
         </div>
         <?php echo $warning_html; ?>
-        <p class="description">This is where uploaded photos will be stored. <br/>(Relative to WP base uploads dir: <?= wp_upload_dir()["basedir"] ?>)</p>
+        <p class="description">This is where uploaded photos will be stored.<br/>Changing this value after photos have been uploaded will result in failure to locate images; they will have to be manually moved to the new location.</p>
     </div>
     <?php
     

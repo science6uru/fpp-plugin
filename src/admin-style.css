@@ -263,14 +263,21 @@
 }
 
 .input-container:focus-within {
-  border-color: #007bff; /* Optional: adds a focus effect to the container */
-  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25); /* Optional: adds a glow effect */
+    /* border-color: #007bff; */
+    /* Optional: adds a focus effect to the container */
+    /* box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25); Optional: adds a glow effect */
+    /* box-shadow: 0 0 0 transparent; */
+    border-radius: 4px;
+    border: 1px solid #8c8f94;
+    border-color: #2271b1;
+    box-shadow: 0 0 0 1px #2271b1;
+    outline: 2px solid transparent;
 }
 
 .prefix-text {
   /* Styles the prefix to look like part of the input text */
   color: #afafaf;
-  margin-right: 5px; /* Spacing between prefix and user input */
+  margin-right: 0px; /* Spacing between prefix and user input */
   /* Ensures the prefix is not selectable by default for a better UX */
   user-select: none; 
 }
@@ -278,14 +285,16 @@
 #fpp_images_base_dir {
   border: none; /* Removes the default input field border */
   outline: none; /* Removes the default input field focus outline */
+  box-shadow: none;
   padding: 0; /* Removes default input padding */
   margin: 0;
   line-height: 1;
   flex-grow: 1; /* Allows the input field to take up available space */
 }
-#fpp_images_base_dir:active {
+#fpp_images_base_dir:active, #fpp_images_base_dir:hover, #fpp_images_base_dir:focus {
   border: none; /* Removes the default input field border */
   outline: none; /* Removes the default input field focus outline */
+  box-shadow: none;
   padding: 0; /* Removes default input padding */
   margin: 0;
   line-height: 1;
