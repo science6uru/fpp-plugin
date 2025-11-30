@@ -45,7 +45,7 @@ $v2_site_key = get_option('fpp_recaptcha_v2_site_key');
           <div id="g-recaptcha"></div>
         </div>
         
-        <button type="submit" class="wide" id="upload-submit-btn">Upload File</button>
+        <button type="submit" class="wide" id="upload-submit-btn" disabled>Upload File</button>
         <button type="cancel" id="file-upload-cancel-btn" class="wide cancel">Select Different File</button>
         <input type="hidden" name="return_url" value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI']); ?>">
         <input type="number" readonly id="image_width" hidden name="image_width" style="width: 33%;display:none;" />
@@ -84,6 +84,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let v2Token = '';
     let recaptchaWidgetId = null;
     let requiresV2 = false;
+    let recaptchaVerified = false;
 
     fileUploadBtn.addEventListener('click', function(e) {
         e.preventDefault();
@@ -104,16 +105,8 @@ document.addEventListener('DOMContentLoaded', function() {
             fileSelector.style.display = 'none';
             fileDisplay.style.display = 'block';
             
-            if (v3SiteKey) {
-                // load captcha vefore but don't get token yet
-                uploadSubmitBtn.disabled = false;
-            } else if (v2SiteKey) {
-                // If only v2 is configured, show challenge immdeiately
-                renderV2Recaptcha();
-            } else {
-                // No configs 
-                uploadSubmitBtn.disabled = false;
-            }
+            // Start reCAPTCHA verification process when file is selected
+            startRecaptchaVerification();
         }
     });
 
@@ -124,6 +117,64 @@ document.addEventListener('DOMContentLoaded', function() {
         fileSelector.style.display = 'block';
         resetRecaptcha();
     });
+
+    async function startRecaptchaVerification() {
+        uploadSubmitBtn.disabled = true;
+        uploadSubmitBtn.textContent = 'Verifying...';
+        
+        try {
+            if (v3SiteKey) {
+                // Try v3 first
+                v3Token = await executeV3Recaptcha();
+                
+                if (v3Token) {
+                    const verificationResult = await verifyV3Score(v3Token);
+                    
+                    if (verificationResult.success) {
+                        if (!verificationResult.data.requires_v2) {
+                            // v3 passed - no v2 required
+                            document.getElementById('g-recaptcha-response').value = v3Token;
+                            recaptchaVerified = true;
+                            requiresV2 = false;
+                            uploadSubmitBtn.disabled = false;
+                            uploadSubmitBtn.textContent = 'Upload File';
+                            return;
+                        } else {
+                            // v3 requires v2 fallback
+                            requiresV2 = true;
+                            renderV2Recaptcha();
+                            uploadSubmitBtn.textContent = 'Upload File';
+                            return;
+                        }
+                    }
+                }
+            }
+            
+            // If v3 failed or not configured, try v2
+            if (v2SiteKey) {
+                requiresV2 = true;
+                renderV2Recaptcha();
+                uploadSubmitBtn.textContent = 'Upload File';
+            } else {
+                // No reCAPTCHA configured
+                recaptchaVerified = true;
+                uploadSubmitBtn.disabled = false;
+                uploadSubmitBtn.textContent = 'Upload File';
+            }
+            
+        } catch (error) {
+            console.error('reCAPTCHA verification error:', error);
+            // Fallback to v2 or allow submission if no reCAPTCHA
+            if (v2SiteKey) {
+                requiresV2 = true;
+                renderV2Recaptcha();
+            } else {
+                recaptchaVerified = true;
+                uploadSubmitBtn.disabled = false;
+            }
+            uploadSubmitBtn.textContent = 'Upload File';
+        }
+    }
 
     function executeV3Recaptcha() {
         return new Promise((resolve, reject) => {
@@ -182,23 +233,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 'callback': function(token) {
                     v2Token = token;
                     document.getElementById('g-recaptcha-response-v2').value = token;
+                    recaptchaVerified = true;
                     uploadSubmitBtn.disabled = false;
                 },
                 'expired-callback': function() {
                     v2Token = '';
                     document.getElementById('g-recaptcha-response-v2').value = '';
+                    recaptchaVerified = false;
                     uploadSubmitBtn.disabled = true;
                 }
             });
         }
-        
-        uploadSubmitBtn.disabled = true;
     }
 
     function resetRecaptcha() {
         v3Token = '';
         v2Token = '';
         requiresV2 = false;
+        recaptchaVerified = false;
         document.getElementById('g-recaptcha-response').value = '';
         document.getElementById('g-recaptcha-response-v2').value = '';
         
@@ -210,78 +262,21 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         uploadSubmitBtn.disabled = false;
+        uploadSubmitBtn.textContent = 'Upload File';
     }
 
     uploadForm.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        uploadSubmitBtn.disabled = true;
-        uploadSubmitBtn.textContent = 'Processing...';
-        
-        try {
-            if (v3SiteKey && !requiresV2) {
-                // re fresh v3 token before submission
-                v3Token = await executeV3Recaptcha();
-                
-                if (v3Token) {
-                    const verificationResult = await verifyV3Score(v3Token);
-                    
-                    if (verificationResult.success) {
-                        if (verificationResult.data.requires_v2) {
-                            requiresV2 = true;
-                            renderV2Recaptcha();
-                            uploadSubmitBtn.disabled = false;
-                            uploadSubmitBtn.textContent = 'Upload File';
-                            return false;
-                        } else {
-                            //  Score is good
-                            document.getElementById('g-recaptcha-response').value = v3Token;
-                        }
-                    } else {
-                        // Failed, require v2
-                        requiresV2 = true;
-                        renderV2Recaptcha();
-                        uploadSubmitBtn.disabled = false;
-                        uploadSubmitBtn.textContent = 'Upload File';
-                        return false;
-                    }
-                } else {
-                    // v3 failed, go to v2
-                    requiresV2 = true;
-                    renderV2Recaptcha();
-                    uploadSubmitBtn.disabled = false;
-                    uploadSubmitBtn.textContent = 'Upload File';
-                    return false;
-                }
-            }
-            
-            if (requiresV2 && !v2Token) {
-                alert('Please complete the security verification.');
-                renderV2Recaptcha();
-                uploadSubmitBtn.disabled = false;
-                uploadSubmitBtn.textContent = 'Upload File';
-                return false;
-            }
-            
-            if (!v3SiteKey && v2SiteKey && !v2Token) {
-                alert('Please complete the security verification.');
-                renderV2Recaptcha();
-                uploadSubmitBtn.disabled = false;
-                uploadSubmitBtn.textContent = 'Upload File';
-                return false;
-            }
-            
-            // All passed
-            this.submit();
-            
-        } catch (error) {
-            console.error('Submission error:', error);
-            alert('An error occurred during submission. Please try again.');
-            uploadSubmitBtn.disabled = false;
-            uploadSubmitBtn.textContent = 'Upload File';
+        if (!recaptchaVerified) {
+            e.preventDefault();
+            alert('Please complete the security verification before uploading.');
+            return false;
         }
+        
+        // All verification passed, allow form submission
+        // Tokens are already set in hidden fields
     });
 
+    // Load reCAPTCHA API if needed
     if (v3SiteKey || v2SiteKey) {
         const script = document.createElement('script');
         let scriptUrl = 'https://www.google.com/recaptcha/api.js';
@@ -299,6 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     window.onRecaptchaLoad = function() {
+        // reCAPTCHA loaded, ready for use
     };
 });
 </script>

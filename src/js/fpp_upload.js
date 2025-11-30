@@ -1,20 +1,7 @@
-
 (function ($) {
     $(document).ready(function () {
         $('#fpp-upload-form').on('submit', function (e) {
-            if ($("#upload_preview").attr("src")){
-                if(php_vars.site_key) {
-                    e.preventDefault();
-                    grecaptcha.ready(function () {
-                        grecaptcha.execute(php_vars.site_key, { action: 'upload_photo' }).then(function (token) {
-                            document.getElementById('g-recaptcha-response').value = token;
-                            e.target.submit();
-                        });
-                    });
-                }
-            } else {
-                e.preventDefault();
-            }
+            //I want to move all the form submission code here instead of in the php file
         });
     
         const dropArea = document.querySelector(".drop_box"),
