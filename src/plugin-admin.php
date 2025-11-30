@@ -101,14 +101,25 @@ function fpp_register_settings() {
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_site_key', 'sanitize_text_field' );
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_secret_key', 'sanitize_text_field' );
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_threshold', 'fpp_sanitize_recaptcha_threshold' );
+    register_setting( 'fpp_settings_group', 'fpp_recaptcha_v2_site_key', 'sanitize_text_field' );
+    register_setting( 'fpp_settings_group', 'fpp_recaptcha_v2_secret_key', 'sanitize_text_field' );
     register_setting( 'fpp_settings_group', 'fpp_images_base_dir', 'fpp_sanitize_images_base_dir' );
     register_setting( 'fpp_settings_group', 'fpp_max_upload_size_mb', 'fpp_sanitize_max_upload_size_mb' );
 
-    // reCAPTCHA section
+
+    // reCAPTCHA v3 section
     add_settings_section(
         'fpp_recaptcha_section',
         'reCAPTCHA v3 Settings',
         'fpp_recaptcha_section_callback',
+        'fpp-settings'
+    );
+
+    // reCAPTCHA v2 section
+    add_settings_section(
+        'fpp_recaptcha_v2_section',
+        'reCAPTCHA v2 Settings',
+        'fpp_recaptcha_v2_section_callback',
         'fpp-settings'
     );
 
@@ -120,10 +131,10 @@ function fpp_register_settings() {
         'fpp-settings'
     );
 
-    // reCAPTCHA fields
+    // reCAPTCHA v3 fields
     add_settings_field(
         'fpp_recaptcha_site_key',
-        'Site Key',
+        'Site Key (v3)',
         'fpp_recaptcha_site_key_callback',
         'fpp-settings',
         'fpp_recaptcha_section'
@@ -131,7 +142,7 @@ function fpp_register_settings() {
 
     add_settings_field(
         'fpp_recaptcha_secret_key',
-        'Secret Key',
+        'Secret Key (v3)',
         'fpp_recaptcha_secret_key_callback',
         'fpp-settings',
         'fpp_recaptcha_section'
@@ -139,30 +150,28 @@ function fpp_register_settings() {
 
     add_settings_field(
         'fpp_recaptcha_threshold',
-        'Detection Threshold',
+        'Detection Threshold (v3)',
         'fpp_recaptcha_threshold_callback',
         'fpp-settings',
         'fpp_recaptcha_section',
         array( 'label_for' => 'fpp_recaptcha_threshold' )
     );
 
-    // Upload settings fields
+    // reCAPTCHA v2 fields
     add_settings_field(
-        'fpp_images_base_dir',
-        'Images Base Directory',
-        'fpp_images_base_dir_callback',
+        'fpp_recaptcha_v2_site_key',
+        'Site Key (v2)',
+        'fpp_recaptcha_v2_site_key_callback',
         'fpp-settings',
-        'fpp_upload_section',
-        array( 'label_for' => 'fpp_images_base_dir' )
+        'fpp_recaptcha_v2_section'
     );
 
     add_settings_field(
-        'fpp_max_upload_size_mb',
-        'Max Upload Size (MB)',
-        'fpp_max_upload_size_mb_callback',
+        'fpp_recaptcha_v2_secret_key',
+        'Secret Key (v2)',
+        'fpp_recaptcha_v2_secret_key_callback',
         'fpp-settings',
-        'fpp_upload_section',
-        array( 'label_for' => 'fpp_max_upload_size_mb' )
+        'fpp_recaptcha_v2_section'
     );
 }
 
@@ -230,6 +239,20 @@ function fpp_recaptcha_threshold_callback() {
     // show default as placeholder (greyed out) when field is empty
     echo '<input type="number" step="0.01" min="0" max="1" id="fpp_recaptcha_threshold" name="fpp_recaptcha_threshold" value="' . esc_attr( $value ) . '" placeholder="0.5" class="small-text" /> ';
     echo '<span class="description">Score cutoff (0.0 - 1.0). Lower is more forgiving; higher is stricter.</span>';
+}
+
+function fpp_recaptcha_v2_section_callback() {
+    echo '<p>Enter your Google reCAPTCHA v2 keys below. These will be used as a fallback when v3 verification fails or has low confidence.</p>';
+}
+
+function fpp_recaptcha_v2_site_key_callback() {
+    $value = get_option( 'fpp_recaptcha_v2_site_key', '' );
+    echo '<input type="text" id="fpp_recaptcha_v2_site_key" name="fpp_recaptcha_v2_site_key" value="' . esc_attr( $value ) . '" class="regular-text" />';
+}
+
+function fpp_recaptcha_v2_secret_key_callback() {
+    $value = get_option( 'fpp_recaptcha_v2_secret_key', '' );
+    echo '<input type="text" id="fpp_recaptcha_v2_secret_key" name="fpp_recaptcha_v2_secret_key" value="' . esc_attr( $value ) . '" class="regular-text" />';
 }
 
 function fpp_check_dir_writable($dir) {
