@@ -11,19 +11,30 @@ License: GPLv2 or later
 function fpp_register_scripts() {
     $fpp_upload_dependencies = ["jquery"];
 
-    $fpp_upload_data = array("fpp_max_upload_size_mb" => get_option("fpp_max_upload_size_mb"));
-
+    $fpp_upload_data = array("fpp_max_upload_size_mb" => get_option("fpp_max_upload_size_mb"),
+                             "ajaxUrl" => admin_url("admin-ajax.php"));
+    $v2_site_key = get_option('fpp_recaptcha_v2_site_key');
     $site_key = get_option('fpp_recaptcha_site_key');
     if (!empty($site_key)) {
-        wp_register_script('fpp-recaptcha-v3', 'https://www.google.com/recaptcha/api.js?render=' . esc_attr($site_key), [], null, true);
+        $captcha_url = 'https://www.google.com/recaptcha/api.js?render=' . esc_attr($site_key);
+        if (!empty($v2_site_key)) {
+            $captcha_url .= '&onload=onRecaptchaLoad';
+        }
+        wp_register_script('fpp-recaptcha-v3', $captcha_url, [], null, true);
         $fpp_upload_dependencies[] = "fpp-recaptcha-v3";
-        $fpp_upload_data['site_key'] = esc_attr($site_key);
+        $fpp_upload_data['v3SiteKey'] = esc_attr($site_key);
+    }
+    if (!empty($v2_site_key)) {
+        $fpp_upload_data['v2SiteKey'] = esc_attr($v2_site_key);
+    }
+    if (!empty($v2_site_key) || !empty($site_key)) {
+        $fpp_upload_data['verify_recaptcha_nonce'] = wp_create_nonce("fpp_verify_recaptcha_score");
     }
     wp_register_script(
         'fpp_upload',
         plugins_url( '/js/fpp_upload.js', __FILE__ ),
         $fpp_upload_dependencies,
-        false,           // Version number
+        false,             // Version number
         true               // Load in the footer (recommended for performance)
     );
 

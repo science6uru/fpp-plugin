@@ -314,9 +314,17 @@ function fpp_process_upload(WP_REST_Request $request) {
     $v3_token = $request->get_param('g-recaptcha-response');
     $v2_token = $request->get_param('g-recaptcha-response-v2');
     $remote_ip = $_SERVER['REMOTE_ADDR'];
-    
+    $validateV3 = !empty($v3_secret_key);
+    $validateV2 = !empty($v2_secret_key);
+
+    if ($validateV2 && $v2_token) {
+        $validateV3 = false;
+    }
+    if ($validateV3 && empty($v2_token)) {
+        $validateV2 = false;
+    }
     // If v3 is configured, use it
-    if (!empty($v3_secret_key)) {
+    if ($validateV3) {
         if (empty($v3_token)) {
             return new WP_REST_Response(array('error' => 'reCAPTCHA v3 token is missing.'), 400);
         }
@@ -355,7 +363,7 @@ function fpp_process_upload(WP_REST_Request $request) {
         // score above high threshold accept without v2
     } 
     // If v3 is not configured but v2 is, use v2
-    else if (!empty($v2_secret_key)) {
+    if ($validateV2) {
         if (empty($v2_token)) {
             return new WP_REST_Response(array('error' => 'reCAPTCHA v2 token is missing.'), 400);
         }
