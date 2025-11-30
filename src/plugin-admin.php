@@ -100,7 +100,8 @@ add_action( 'admin_init', 'fpp_register_settings' );
 function fpp_register_settings() {
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_site_key', 'sanitize_text_field' );
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_secret_key', 'sanitize_text_field' );
-    register_setting( 'fpp_settings_group', 'fpp_recaptcha_threshold', 'fpp_sanitize_recaptcha_threshold' );
+    register_setting( 'fpp_settings_group', 'fpp_recaptcha_low_threshold', 'fpp_sanitize_recaptcha_threshold' );
+    register_setting( 'fpp_settings_group', 'fpp_recaptcha_high_threshold', 'fpp_sanitize_recaptcha_threshold' );
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_v2_site_key', 'sanitize_text_field' );
     register_setting( 'fpp_settings_group', 'fpp_recaptcha_v2_secret_key', 'sanitize_text_field' );
     register_setting( 'fpp_settings_group', 'fpp_images_base_dir', 'fpp_sanitize_images_base_dir' );
@@ -149,12 +150,21 @@ function fpp_register_settings() {
     );
 
     add_settings_field(
-        'fpp_recaptcha_threshold',
-        'Detection Threshold (v3)',
-        'fpp_recaptcha_threshold_callback',
+        'fpp_recaptcha_low_threshold',
+        'Low Threshold (v3)',
+        'fpp_recaptcha_low_threshold_callback',
         'fpp-settings',
         'fpp_recaptcha_section',
-        array( 'label_for' => 'fpp_recaptcha_threshold' )
+        array( 'label_for' => 'fpp_recaptcha_low_threshold' )
+    );
+
+    add_settings_field(
+        'fpp_recaptcha_high_threshold',
+        'High Threshold (v3)',
+        'fpp_recaptcha_high_threshold_callback',
+        'fpp-settings',
+        'fpp_recaptcha_section',
+        array( 'label_for' => 'fpp_recaptcha_high_threshold' )
     );
 
     // reCAPTCHA v2 fields
@@ -173,6 +183,25 @@ function fpp_register_settings() {
         'fpp-settings',
         'fpp_recaptcha_v2_section'
     );
+    // Upload settings fields
+    add_settings_field(
+        'fpp_images_base_dir',
+        'Images Base Directory',
+        'fpp_images_base_dir_callback',
+        'fpp-settings',
+        'fpp_upload_section',
+        array( 'label_for' => 'fpp_images_base_dir' )
+    );
+
+    add_settings_field(
+        'fpp_max_upload_size_mb',
+        'Max Upload Size (MB)',
+        'fpp_max_upload_size_mb_callback',
+        'fpp-settings',
+        'fpp_upload_section',
+        array( 'label_for' => 'fpp_max_upload_size_mb' )
+    );
+    
 }
 
 function fpp_sanitize_recaptcha_threshold( $value ) {
@@ -218,6 +247,7 @@ function fpp_sanitize_images_base_dir($value) {
 
 function fpp_recaptcha_section_callback() {
     echo '<p>Enter your Google reCAPTCHA v3 keys below. Get them from <a href="https://www.google.com/recaptcha/admin/create" target="_blank">Google reCAPTCHA Admin</a> (select v3 type). v3 is invisible and scores user interactions.</p>';
+    echo '<p><strong>Threshold System:</strong> Scores above High Threshold are accepted immediately. Scores between Low and High Threshold require reCAPTCHA v2 verification. Scores below Low Threshold are rejected.</p>';
 }
 
 function fpp_upload_section_callback() {
@@ -234,11 +264,16 @@ function fpp_recaptcha_secret_key_callback() {
     echo '<input type="text" id="fpp_recaptcha_secret_key" name="fpp_recaptcha_secret_key" value="' . esc_attr( $value ) . '" class="regular-text" />';
 }
 
-function fpp_recaptcha_threshold_callback() {
-    $value = get_option( 'fpp_recaptcha_threshold', '0.0' );
-    // show default as placeholder (greyed out) when field is empty
-    echo '<input type="number" step="0.01" min="0" max="1" id="fpp_recaptcha_threshold" name="fpp_recaptcha_threshold" value="' . esc_attr( $value ) . '" placeholder="0.5" class="small-text" /> ';
-    echo '<span class="description">Score cutoff (0.0 - 1.0). Lower is more forgiving; higher is stricter.</span>';
+function fpp_recaptcha_low_threshold_callback() {
+    $value = get_option( 'fpp_recaptcha_low_threshold', '0.3' );
+    echo '<input type="number" step="0.01" min="0" max="1" id="fpp_recaptcha_low_threshold" name="fpp_recaptcha_low_threshold" value="' . esc_attr( $value ) . '" placeholder="0.3" class="small-text" /> ';
+    echo '<span class="description">Scores below this are rejected immediately.</span>';
+}
+
+function fpp_recaptcha_high_threshold_callback() {
+    $value = get_option( 'fpp_recaptcha_high_threshold', '0.7' );
+    echo '<input type="number" step="0.01" min="0" max="1" id="fpp_recaptcha_high_threshold" name="fpp_recaptcha_high_threshold" value="' . esc_attr( $value ) . '" placeholder="0.7" class="small-text" /> ';
+    echo '<span class="description">Scores above this are accepted without v2 challenge.</span>';
 }
 
 function fpp_recaptcha_v2_section_callback() {
@@ -469,7 +504,7 @@ function fpp_admin_render() {
     echo '<div class="wrap">';
     echo '<h1>' . esc_html( $title ) . '</h1>';
 
-    $file = plugin_dir_path( __FILE__ ) . 'admin_dashboard.php';
+    $file = plugin_dir_path( __FILE__) . 'admin_dashboard.php';
 
     if ( file_exists( $file ) ) {
         require $file;
@@ -546,7 +581,7 @@ function fpp_admin_manage_render() {
         </script>
 
         <?php
-        $file = plugin_dir_path( __FILE__ ) . 'admin_manage.php';
+        $file = plugin_dir_path( __FILE__) . 'admin_manage.php';
         if ( file_exists( $file ) ) {
             require $file;
         } else {
@@ -744,6 +779,85 @@ add_action('wp_ajax_fpp_sync_station_folders', function() {
     
     wp_send_json_success(empty($parts) ? "No changes needed" : implode('; ', $parts));
 });
+
+add_action('wp_ajax_fpp_verify_recaptcha_score', 'fpp_verify_recaptcha_score_handler');
+add_action('wp_ajax_nopriv_fpp_verify_recaptcha_score', 'fpp_verify_recaptcha_score_handler');
+
+function fpp_verify_recaptcha_score_handler() {
+    check_ajax_referer('fpp_verify_recaptcha_score', 'nonce');
+    
+    $token = isset($_POST['token']) ? sanitize_text_field($_POST['token']) : '';
+    if (empty($token)) {
+        wp_send_json_error('No token provided');
+        return;
+    }
+    
+    $v3_secret_key = get_option('fpp_recaptcha_secret_key');
+    if (empty($v3_secret_key)) {
+        wp_send_json_error('reCAPTCHA v3 not configured');
+        return;
+    }
+    
+    $remote_ip = $_SERVER['REMOTE_ADDR'];
+    
+    $verify_response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
+        'timeout' => 10,
+        'body' => array(
+            'secret' => $v3_secret_key,
+            'response' => $token,
+            'remoteip' => $remote_ip,
+        ),
+    ));
+    
+    if (is_wp_error($verify_response)) {
+        error_log('FPP reCAPTCHA v3 verification error: ' . $verify_response->get_error_message());
+        wp_send_json_error('Connection to reCAPTCHA service failed');
+        return;
+    }
+    
+    $response_code = wp_remote_retrieve_response_code($verify_response);
+    if ($response_code !== 200) {
+        error_log('FPP reCAPTCHA v3 HTTP error: ' . $response_code);
+        wp_send_json_error('reCAPTCHA service returned error: ' . $response_code);
+        return;
+    }
+    
+    $response_body = wp_remote_retrieve_body($verify_response);
+    $response_data = json_decode($response_body);
+    
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        error_log('FPP reCAPTCHA v3 JSON parse error: ' . json_last_error_msg());
+        wp_send_json_error('Invalid response from reCAPTCHA service');
+        return;
+    }
+    
+    if (!$response_data || !isset($response_data->success)) {
+        error_log('FPP reCAPTCHA v3 invalid response: ' . $response_body);
+        wp_send_json_error('Invalid response format from reCAPTCHA service');
+        return;
+    }
+    
+    if (!$response_data->success) {
+        $error_codes = isset($response_data->{'error-codes'}) ? implode(', ', $response_data->{'error-codes'}) : 'Unknown error';
+        error_log('FPP reCAPTCHA v3 verification failed: ' . $error_codes);
+        wp_send_json_error('reCAPTCHA verification failed: ' . $error_codes);
+        return;
+    }
+    
+    $low_threshold = floatval(get_option('fpp_recaptcha_low_threshold', '0.3'));
+    $high_threshold = floatval(get_option('fpp_recaptcha_high_threshold', '0.7'));
+    $score = isset($response_data->score) ? floatval($response_data->score) : 0;
+    
+    // Determine if v2 is required
+    $requires_v2 = ($score >= $low_threshold && $score < $high_threshold);
+    
+    wp_send_json_success(array(
+        'score' => $score,
+        'requires_v2' => $requires_v2,
+        'low_threshold' => $low_threshold,
+        'high_threshold' => $high_threshold
+    ));
+}
 
 function fpp_photo_file_path($station_id, $filename) {
     $base_dir = fpp_photos_dir($station_id);
