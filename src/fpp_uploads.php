@@ -28,6 +28,118 @@ function fpp_get_slug_page_link($slug){
   return get_permalink($post->ID);
 }
 
+function fpp_get_rotation($filename) {
+    if (function_exists('exif_read_data')) {
+        $exif = exif_read_data($filename);
+        if ($exif && isset($exif['Orientation'])) {
+            $orientation = $exif['Orientation'];
+            if ($orientation != 1) {
+                // Create an image resource from the filename
+                $img = imagecreatefromjpeg($filename); // For JPEGs. Use imagecreatefrompng/gif for other formats.
+                $deg = 0;
+                switch ($orientation) {
+                    case 3:
+                        $deg = 180;
+                        break;
+                    case 6:
+                        $deg = 270;
+                        break;
+                    case 8:
+                        $deg = 90;
+                        break;
+                }
+                return $deg;
+            }
+        }
+    }
+    return 0;
+}
+
+
+function fpp_create_image_resized($fileName, $maxWidth, $maxHeight, $destination) {
+    // Get original image dimensions and type
+    list($sourceImageWidth, $sourceImageHeight, $uploadImageType) = getimagesize($fileName);
+    if($sourceImageWidth == 0 || $sourceImageHeight == 0) {
+        return false;
+    }
+    echo "$fileName is $sourceImageWidth x $sourceImageHeight <br/>";
+
+
+    // Create image resource from the source file based on file type
+    switch ($uploadImageType) {
+        case IMAGETYPE_JPEG:
+            $sourceImage = imagecreatefromjpeg($fileName);
+            $deg = fpp_get_rotation($fileName);
+            if ($deg) {
+                // Rotate the image resource
+                $sourceImage = imagerotate($sourceImage, $deg, 0);
+                imagejpeg($sourceImage, $fileName, 95);
+                $sourceImage = imagecreatefromjpeg($fileName);
+            }
+
+            $gdWidth = imagesx($sourceImage);
+            $gdHeight = imagesy($sourceImage);
+            $ratio = min($maxWidth / $gdWidth, $maxHeight / $gdHeight);
+                echo "Ratio is $ratio<br/>";
+            $newWidth = (int)($gdWidth * $ratio);
+            $newHeight = (int)($gdHeight * $ratio);
+            echo ("GD image size is $gdWidth x $gdHeight<br/>");
+            echo "New dimaensions are $newWidth x $newHeight <br/>";
+            break;
+        default:
+            echo("unsupported image rtype for file $fileName");
+            return false; // Unsupported image type
+    }
+
+    // Create a new true color image (destination layer) with the new dimensions
+    $targetLayer = imagecreatetruecolor($newWidth, $newHeight);
+
+    // Resize the image using imagecopyresampled for better quality
+    imagecopyresampled($targetLayer, $sourceImage, 0, 0, 0, 0,
+        $newWidth, $newHeight, $sourceImageWidth, $sourceImageHeight);
+
+    // Save the resized image to the destination file
+    switch ($uploadImageType) {
+        case IMAGETYPE_JPEG:
+            imagejpeg($targetLayer, $destination, 85); // Quality 0-100
+            break;
+    }
+    return true;
+}
+
+function fpp_generate_thumbnail($photo) {
+    global $wpdb, $fpp_photos;
+    $filename = $photo->file_name;
+    $path = fpp_photos_dir($photo->station_id);
+    $filepath = $path . "/" . $filename;
+
+    if (empty($filename)) {
+        $wpdb->delete(
+            $fpp_photos,
+            array(
+                'id' => $photo->id,
+            )
+        );
+        return;
+    }
+    if (!file_exists($filepath)) {
+        $wpdb->delete(
+            $fpp_photos,
+            array(
+                'id' => $photo->id,
+            )
+        );
+        return;
+    }
+    // Get only the filename without the extension
+    $basename = pathinfo($filepath, PATHINFO_FILENAME);
+    $thumbname = $basename . "-thumb.jpg";
+    if (fpp_create_image_resized($filepath, 300, 200, $path . "/" . $thumbname)) {
+        $updated = $wpdb->update($fpp_photos,
+                        array('thumb_200' => $thumbname),
+                        array('id' => $photo->id));
+    }
+}
 /**
  * Generates a unique filename for photos uploaded to FPP stations.
  * @return String
@@ -225,6 +337,8 @@ function fpp_process_upload(WP_REST_Request $request) {
                     'error' => "Internal Server Error: Could not persist data",
                 ), 500);
             }
+            $photo = $wpdb->get_row("select * from $fpp_photos where id = $photo_id");
+            fpp_generate_thumbnail($photo);
             if (isset($_POST["return_url"])) {
                 $return_url = htmlspecialchars_decode($_POST['return_url']);
                 $upload_param = str_contains($return_url, "?") ? "&uploaded=success" : "?uploaded=success";
