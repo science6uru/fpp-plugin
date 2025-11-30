@@ -62,7 +62,6 @@ function fpp_create_image_resized($fileName, $maxWidth, $maxHeight, $destination
     if($sourceImageWidth == 0 || $sourceImageHeight == 0) {
         return false;
     }
-    echo "$fileName is $sourceImageWidth x $sourceImageHeight <br/>";
 
 
     // Create image resource from the source file based on file type
@@ -80,14 +79,10 @@ function fpp_create_image_resized($fileName, $maxWidth, $maxHeight, $destination
             $gdWidth = imagesx($sourceImage);
             $gdHeight = imagesy($sourceImage);
             $ratio = min($maxWidth / $gdWidth, $maxHeight / $gdHeight);
-                echo "Ratio is $ratio<br/>";
             $newWidth = (int)($gdWidth * $ratio);
             $newHeight = (int)($gdHeight * $ratio);
-            echo ("GD image size is $gdWidth x $gdHeight<br/>");
-            echo "New dimaensions are $newWidth x $newHeight <br/>";
             break;
         default:
-            echo("unsupported image rtype for file $fileName");
             return false; // Unsupported image type
     }
 
@@ -149,6 +144,92 @@ function fpp_generate_unique_filename(String$user_ip, int$photo_id, String$ext) 
     return "{$hashstr}-{$photo_id}{$ext}";
 }
 
+function fpp_verify_recaptcha_v3($token, $remote_ip) {
+    $secret_key = get_option('fpp_recaptcha_secret_key');
+    if (empty($secret_key)) {
+        return array('success' => false, 'error' => 'reCAPTCHA v3 not configured');
+    }
+
+    $verify_response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
+        'timeout' => 10,
+        'body' => array(
+            'secret' => $secret_key,
+            'response' => $token,
+            'remoteip' => $remote_ip,
+        ),
+    ));
+
+    if (is_wp_error($verify_response)) {
+        return array('success' => false, 'error' => 'reCAPTCHA verification failed: ' . $verify_response->get_error_message());
+    }
+
+    $response_code = wp_remote_retrieve_response_code($verify_response);
+    if ($response_code !== 200) {
+        return array('success' => false, 'error' => 'reCAPTCHA service returned error: ' . $response_code);
+    }
+
+    $response_body = wp_remote_retrieve_body($verify_response);
+    $response_data = json_decode($response_body);
+    
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return array('success' => false, 'error' => 'Invalid response from reCAPTCHA service');
+    }
+    
+    if (!$response_data || !isset($response_data->success)) {
+        return array('success' => false, 'error' => 'Invalid response format from reCAPTCHA service');
+    }
+    
+    if (!$response_data->success) {
+        $error_codes = isset($response_data->{'error-codes'}) ? implode(', ', $response_data->{'error-codes'}) : 'Unknown error';
+        return array('success' => false, 'error' => $error_codes);
+    }
+    
+    return array('success' => true, 'score' => $response_data->score ?? 0, 'response' => $response_data);
+}
+
+function fpp_verify_recaptcha_v2($token, $remote_ip) {
+    $secret_key = get_option('fpp_recaptcha_v2_secret_key');
+    if (empty($secret_key)) {
+        return array('success' => false, 'error' => 'reCAPTCHA v2 not configured');
+    }
+
+    $verify_response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
+        'timeout' => 10,
+        'body' => array(
+            'secret' => $secret_key,
+            'response' => $token,
+            'remoteip' => $remote_ip,
+        ),
+    ));
+
+    if (is_wp_error($verify_response)) {
+        return array('success' => false, 'error' => 'reCAPTCHA v2 verification failed: ' . $verify_response->get_error_message());
+    }
+
+    $response_code = wp_remote_retrieve_response_code($verify_response);
+    if ($response_code !== 200) {
+        return array('success' => false, 'error' => 'reCAPTCHA v2 service returned error: ' . $response_code);
+    }
+
+    $response_body = wp_remote_retrieve_body($verify_response);
+    $response_data = json_decode($response_body);
+    
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return array('success' => false, 'error' => 'Invalid response from reCAPTCHA v2 service');
+    }
+    
+    if (!$response_data || !isset($response_data->success)) {
+        return array('success' => false, 'error' => 'Invalid response format from reCAPTCHA v2 service');
+    }
+    
+    if (!$response_data->success) {
+        $error_codes = isset($response_data->{'error-codes'}) ? implode(', ', $response_data->{'error-codes'}) : 'Unknown error';
+        return array('success' => false, 'error' => $error_codes);
+    }
+    
+    return array('success' => true, 'response' => $response_data);
+}
+
 /** Handle the user uploads */
 function fpp_process_upload(WP_REST_Request $request) {
     global $wpdb, $fpp_stations, $fpp_photos;
@@ -179,7 +260,8 @@ function fpp_process_upload(WP_REST_Request $request) {
         ), 500);
     }
 
-    $secret_key = get_option('fpp_recaptcha_secret_key');
+    $v3_secret_key = get_option('fpp_recaptcha_secret_key');
+    $v2_secret_key = get_option('fpp_recaptcha_v2_secret_key');
     $uploaded_file = $_FILES['user_photo'];
 
     // better error handling
@@ -228,35 +310,62 @@ function fpp_process_upload(WP_REST_Request $request) {
 
     $temp_file_path = $uploaded_file['tmp_name'];
     $metadata = wp_read_image_metadata( $temp_file_path );
-    // Only verify if secret key is configured
-    if (!empty($secret_key)) {
-        $recaptcha_response = $request->get_param('g-recaptcha-response');
-        if (empty($recaptcha_response)) {
-            return new WP_REST_Response(array('error' => 'reCAPTCHA token is missing.'), 400);
+    
+    $v3_token = $request->get_param('g-recaptcha-response');
+    $v2_token = $request->get_param('g-recaptcha-response-v2');
+    $remote_ip = $_SERVER['REMOTE_ADDR'];
+    
+    // If v3 is configured, use it
+    if (!empty($v3_secret_key)) {
+        if (empty($v3_token)) {
+            return new WP_REST_Response(array('error' => 'reCAPTCHA v3 token is missing.'), 400);
         }
 
-        $verify_response = wp_remote_post('https://www.google.com/recaptcha/api/siteverify', array(
-            'body' => array(
-                'secret' => $secret_key,
-                'response' => $recaptcha_response,
-                'remoteip' => $_SERVER['REMOTE_ADDR'],
-            ),
-        ));
-
-        if (is_wp_error($verify_response)) {
-            return new WP_REST_Response(array('error' => 'reCAPTCHA verification failed: ' . $verify_response->get_error_message()), 400);
+        $v3_result = fpp_verify_recaptcha_v3($v3_token, $remote_ip);
+        
+        if (!$v3_result['success']) {
+            return new WP_REST_Response(array('error' => 'reCAPTCHA v3 verification failed: ' . ($v3_result['error'] ?? 'Unknown error')), 400);
         }
 
-        $response_body = json_decode(wp_remote_retrieve_body($verify_response));
+        $low_threshold = floatval(get_option('fpp_recaptcha_low_threshold', '0.3'));
+        $high_threshold = floatval(get_option('fpp_recaptcha_high_threshold', '0.7'));
+        $score = $v3_result['score'];
 
-        $threshold = floatval( get_option( 'fpp_recaptcha_threshold', '0.0' ) );
-
-        if ( ! $response_body->success || ! isset( $response_body->score ) || $response_body->score < $threshold ) {
+        // Score below low threshold
+        if ($score < $low_threshold) {
             return new WP_REST_Response(array('error' => 'reCAPTCHA verification failed (low score). Please try again.'), 400);
         }
+        
+        // Score between low and high thresholds require v2
+        if ($score >= $low_threshold && $score < $high_threshold) {
+            if (empty($v2_token)) {
+                return new WP_REST_Response(array(
+                    'error' => 'v2_required',
+                    'message' => 'Additional security verification required.'
+                ), 400);
+            }
+            
+            // ver v2 token
+            $v2_result = fpp_verify_recaptcha_v2($v2_token, $remote_ip);
+            if (!$v2_result['success']) {
+                return new WP_REST_Response(array('error' => 'reCAPTCHA v2 verification failed. Please try again.'), 400);
+            }
+        }
+        
+        // score above high threshold accept without v2
+    } 
+    // If v3 is not configured but v2 is, use v2
+    else if (!empty($v2_secret_key)) {
+        if (empty($v2_token)) {
+            return new WP_REST_Response(array('error' => 'reCAPTCHA v2 token is missing.'), 400);
+        }
 
-        // if ($response_body->action !== 'upload_photo') { ... }
+        $v2_result = fpp_verify_recaptcha_v2($v2_token, $remote_ip);
+        if (!$v2_result['success']) {
+            return new WP_REST_Response(array('error' => 'reCAPTCHA v2 verification failed. Please try again.'), 400);
+        }
     }
+    // If neither isset , skip 
 
     $user_ip = fpp_get_user_ip();
 
@@ -371,9 +480,7 @@ function fpp_process_upload(WP_REST_Request $request) {
             'error' => "Internal Server Error {$e->getMessage()}",
         ), 500);
     }
-
-
-/*
+    /*
 
     // You can access parameters via direct array access on the object:
     $param = $request['user_photo'];
@@ -418,6 +525,4 @@ function fpp_register_routes(){
 }
 
 add_action('rest_api_init', 'fpp_register_routes');
-
-
 ?>
