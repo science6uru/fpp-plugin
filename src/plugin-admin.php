@@ -722,11 +722,16 @@ add_action('wp_ajax_fpp_sync_station_folders', function() {
     wp_send_json_success(empty($parts) ? "No changes needed" : implode('; ', $parts));
 });
 
+function fpp_photo_file_path($station_id, $filename) {
+    $base_dir = fpp_photos_dir($station_id);
+    return rtrim($base_dir, '/') . '/' . ltrim($filename, '/');
+}
+
 function fpp_check_admin_post() {
     global $wpdb, $fpp_stations, $fpp_photos;
-    if (isset($_POST['action']) && in_array($_POST['action'] , ['add_station', 'update_station', 'delete_station', 'update_station_upload_slug', 'fpp_photo_update_status'])) {
+    if (isset($_POST['action']) && in_array($_POST['action'] , ['add_station', 'update_station', 'delete_station', 'update_station_upload_slug', 'fpp_photo_delete', 'fpp_photo_update_status'])) {
         $nonce_action = "fpp_stations_nonce";
-        if (in_array($_POST['action'], ['fpp_photo_update_status'])) {
+        if (in_array($_POST['action'], ['fpp_photo_update_status', 'fpp_photo_delete'])) {
             $nonce_action = 'fpp_photo_manage';
         }
         if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), $nonce_action ) ) {
@@ -819,6 +824,35 @@ function fpp_check_admin_post() {
                                 }
                                 add_settings_error('fpp_stations', 'station_deleted', 'Station deleted.', 'updated');
                             }
+                        }
+                    }
+                    break;
+                case 'fpp_photo_delete':
+                    $id = isset($_POST['fpp_photo_id']) ? intval($_POST['fpp_photo_id']) : 0;
+                    if ($id <= 0) {
+                        wp_send_json_error('Invalid station ID');
+                        return;
+                    }
+                    
+                    $photo = $wpdb->get_row( $wpdb->prepare(
+                        "SELECT * FROM $fpp_photos WHERE id = %d",
+                        intval($id)
+                    ) );
+                    
+                    if ($photo) {
+                        $station_id = intval($photo->station_id);
+                        $file_path = fpp_photo_file_path($station_id, $photo->filename);
+                        
+                        // Delete from DB
+                        $wpdb->delete(
+                            $fpp_photos,
+                            array('id' => intval($id)),
+                            array('%d')
+                        );
+                        
+                        // Delete from fs
+                        if (file_exists($file_path)) {
+                            @unlink($file_path);
                         }
                     }
                     break;
