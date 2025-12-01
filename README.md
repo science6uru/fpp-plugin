@@ -1,53 +1,144 @@
-# Fixed Point Photography Plugin for Wordpress
+# Photolog – Fixed Point Photography Time-Lapse Plugin for WordPress
 
-This is a Wordpress plugin built for the Spring Creek Forest Preservation Society as part of my Eagle Project. While it is for the SCFPS, any nature preservation society with a wordpress website may use this plugin to power any fixed point photography stations throughout their preserves.
+**A complete fixed-point photography system for nature preserves, parks, and conservation organizations**
 
-## Use
+WordPress Plugin Version  
+License: GPLv2 or later  
+PHP: greater than or equal to 7.4  
+WordPress: greater than or equal to 5.8
 
-The plugin works by providing shortcodes that you may place on a webpage that users may upload photos from. Ideally, there will be QR codes at every station pointing to its unique upload page so that the images do not get mixed from multiple photo spots. Each upload form is protected by Google reCAPTCHA v3; the API keys and detection threshold are configurable in the plugin admin settings.
-<br> 
-<br>
-Uploaded images will be sent to the server and await moderation/approval by an admin before becoming publicly viewable or becoming a part of the timelapse. 
-<br>
-<br>
-This README is a work in progress not finished...
+Originally built as an Eagle Scout project for the Spring Creek Forest Preservation Society, Photolog lets visitors and hikers take and submit photos from permanent photo points using their phones, and automatically builds moderated time-lapse galleries using these crowdsourced photos.
 
-<br/>
-<br/>
-<br/>
-<br/>
-<br/>
-<br/>
-<br/>
-<br/>
-<br/>
+### Demo Screenshots (placeholder)
 
-# vscode-devcontainer-wordpress
+#### Public Upload Page (Mobile-Friendly)
+![Public upload form with drag-and-drop and preview](https://via.placeholder.com/800x1200/4a7c59/ffffff?text=Photolog+Upload+Form+Mobile+View)  
+Clean upload with reCAPTCHA v3 protection
 
-This contains the configuration necessary for setting up WordPress development using VSCode Dev Containers.
-A MariaDB and WordPress devlopment container are started, and Wordpress is automatically installed and available at http://localhost:8080.
+#### Admin Photo Moderation Dashboard
+![Admin photo management table with approve/reject buttons](https://via.placeholder.com/1400x900/2c3e50/eff0f1?text=Admin+Photo+Moderation+Table)  
+WP_List_Table interface with filtering, bulk actions, and thumbnails
 
-## Configuration
+#### Station Management Overview
+![Stations list with photo counts and shortcodes](https://via.placeholder.com/1400x700/34495e/f8f9fa?text=FPP+Admin+Stations+Overview)  
+Easy station creation, renaming, and generated shortcodes
 
-By default the container is configured for plugin development, but you can switch to theme development by changing the volume for the WordPress service in `docker-compose.yml`
+#### Settings Page (reCAPTCHA + Upload Limits)
+![Settings page with reCAPTCHA v3 and v2 keys](https://via.placeholder.com/1400x800/27ae60/ffffff?text=FPP+Settings+reCAPTCHA+Configuration)  
+Full control over the plugin
 
-WordPress settings can be configured in `.devcontainer/wp-setup.sh`, i.e. the site name, and admin user account details. You can also specify a space-separated list of WordPress plugins to automatically install as well. By setting `WP_RESET` to `true`, the container will rebuild the WordPress instalation from scratch every time it is loaded. 
+## Features
 
-## Data folder
+- Unlimited independent photo stations
+- Public upload form via shortcode `[fpp_upload station="slug"]`
+- Google reCAPTCHA v3 + automatic fallback to v2 checkbox challenge
+- Admin moderation queue (Approve / Reject / Delete)
+- Automatic thumbnail generation (200×200 px)
+- Unique, unguessable filenames for security
+- Carousel/gallery shortcode `[fpp_carousel station="slug"]` (WIP)
+- Photos stored in `wp-content/uploads/fpp-plugin/station-XX/`
+- Configurable plugin max upload size & reCAPTCHA score thresholds
+- Upload pages automatically excluded from search results
+- Clean admin interface under FPP Admin menu
 
-Any `.sql` files placed `.devcontainer/data` will be automatically imported when your site is built (using `wp db import`). It is up to you to ensure table name prefixes will match (defualt is wp_).
+## Installation
 
-Anything placed in the `plugins` folder (single files or folders) will be copied into the WordPress plugins folder and activated as a plugin. This enables things like defining custom post types relevant to your imported data set, but not part of the development process.
+1. Download the latest release zip and import it as a wordpress plugin via the Plugins menu (Or upload the `src` folder to `/wp-content/plugins/` and rename it to `photolog`)
+3. Activate Photolog from the Plugins menu
+4. Go to **FPP Admin → Settings** and enter your Google reCAPTCHA v3 and v2 keys
+5. Through the Photolog stations menu, create your stations in the plugin for each photo point
+6. Create a page for each station and add the shortcode:
 
-## Included Tools
+```
+[fpp_upload station="your-station-slug"]
+```
 
-- XDebug, configured 
-- WP-CLI
-- Composer
-- NodeJS
-- PHP/WordPress extensions for VSCode (see `devconatainer.json`)
+6. (WIP) Add a gallery page and embed the shortcode for each station:
 
-## TODO
+```
+[fpp_carousel station="your-station-slug"]
+```
 
-- provide a preconfigured launch.json for PHP debugging
-- theme auto-install
+7. Print QR codes pointing to each upload page and place them at your photo points
+
+## Shortcodes
+
+| Shortcode                              | Description                                      | Required Attribute |
+|----------------------------------------|--------------------------------------------------|--------------------|
+| `[fpp_upload station="example-trail-head"]`    | Public photo submission form                     | `station`          |
+| `[fpp_carousel station="example-trail-head"]`       | Displays approved photos (carousel/gallery)      | `station`          |
+
+## Admin Menu Overview
+
+- **FPP Admin → Dashboard** – Quick stats (WIP)
+- **FPP Admin → Stations** – Create, rename, delete stations
+- **FPP Admin → (Station Name)** – Moderate photos for that station
+- **FPP Admin → Settings** – reCAPTCHA keys, thresholds, upload limits
+
+## File Structure After Activation
+
+```
+wp-content/uploads/
+└── fpp-plugin/
+    ├── station-1/
+    │   ├── a1b2c3d4e5-123.jpg
+    │   └── a1b2c3d4e5-123-thumb.jpg
+    ├── station-2/
+    └── ...
+```
+
+## Database Tables
+
+- `wp_fpp_stations` – station metadata (id, name, slug, upload_page_slug, lat/lon)
+- `wp_fpp_photos` – photo records (id, station_id, ip, file_name, thumb_200, status, timestamps)
+
+## Security & Privacy
+
+- REST API upload endpoint with server-side reCAPTCHA verification
+- Randomized filenames
+- IP logging
+- Transactional database handling (rollback on failure)
+- Direct directory access can be blocked via `.htaccess` if needed
+
+## Development & Contributing
+
+The plugin is intentionally modular and easy to extend:
+
+```
+photolog/
+├── plugin.php                  Main bootstrap
+├── plugin-admin.php            Admin menus & settings
+├── plugin-activation.php       DB setup, upgrades, cleanup
+├── plugin-shortcodes.php       Shortcode routing
+├── fpp_uploads.php             REST API upload + image processing
+├── admin_manage.php            Photo moderation table
+├── fpp-plugin-fpp_upload.php   Upload form template
+├── fpp-plugin-fpp_carousel.php Carousel template (customize!)
+├── js/fpp_upload.js            Frontend + reCAPTCHA logic
+└── css/fpp_upload.css          Styling
+```
+
+### Local Development
+
+Use the included VSCode Dev Container (`.devcontainer/` folder) for a full WordPress + MariaDB + WP-CLI + Xdebug environment.
+
+## Roadmap / Planned Features
+
+- Bulk approve/reject actions
+- Full-featured carousel/image viewer
+- GPS coordinates + interactive map of stations
+- Alerts on new pending photos for admins
+
+## License
+
+Released under **GPLv2 or later**
+
+## Credits
+
+Created by Andrew Owen, @yevha1, @thinhcomepan, @sowen  
+Eagle Scout Service Project 2024–2025  
+For the Spring Creek Forest Preservation Society
+
+**Thank you for helping document nature**
+
+If you use Photolog in your preserve or park, I’d love to see it! Email me at andrewseagle2025@gmail.com
