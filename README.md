@@ -9,23 +9,19 @@ WordPress: greater than or equal to 5.8
 
 Originally built as an Eagle Scout project for the Spring Creek Forest Preservation Society, Photolog lets visitors and hikers take and submit photos from permanent photo points using their phones, and automatically builds moderated time-lapse galleries using these crowdsourced photos.
 
-### Demo Screenshots (placeholder)
+### Demo Screenshots
 
-#### Public Upload Page (Mobile-Friendly)
-![Public upload form with drag-and-drop and preview](https://via.placeholder.com/800x1200/4a7c59/ffffff?text=Photolog+Upload+Form+Mobile+View)  
+#### Public Upload Pages
+![Public upload form with drag-and-drop and preview](https://github.com/science6uru/fpp-plugin/blob/main/.github/uploadForm.png?raw=true)  
 Clean upload with reCAPTCHA v3 protection
 
 #### Admin Photo Moderation Dashboard
-![Admin photo management table with approve/reject buttons](https://via.placeholder.com/1400x900/2c3e50/eff0f1?text=Admin+Photo+Moderation+Table)  
+![Admin photo management table with approve/reject buttons](https://github.com/science6uru/fpp-plugin/blob/main/.github/wpListTableModeration.png?raw=true)  
 WP_List_Table interface with filtering, bulk actions, and thumbnails
 
-#### Station Management Overview
-![Stations list with photo counts and shortcodes](https://via.placeholder.com/1400x700/34495e/f8f9fa?text=FPP+Admin+Stations+Overview)  
+#### Station Management
+![Stations list with photo counts and shortcodes](https://github.com/science6uru/fpp-plugin/blob/main/.github/wpListTableStations.png?raw=true)  
 Easy station creation, renaming, and generated shortcodes
-
-#### Settings Page (reCAPTCHA + Upload Limits)
-![Settings page with reCAPTCHA v3 and v2 keys](https://via.placeholder.com/1400x800/27ae60/ffffff?text=FPP+Settings+reCAPTCHA+Configuration)  
-Full control over the plugin
 
 ## Features
 
