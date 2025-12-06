@@ -5,7 +5,7 @@ global $fpp_photos;
 global $fpp_stations;
 global $wpdb;
 
-$fpp_db_version = '1.9';
+$fpp_db_version = '1.16';
 $fpp_photos = $wpdb->prefix . 'fpp_photos';
 $fpp_stations = $wpdb->prefix . 'fpp_stations';
 
@@ -63,7 +63,12 @@ function fpp_install() {
         ip varchar(55) NOT NULL,
         file_name varchar(32) NOT NULL UNIQUE,
         thumb_200 varchar(38),
+        image_2000 varchar(38),
         status enum('unreviewed', 'approved', 'rejected') NOT NULL default 'unreviewed',
+        captcha_mode enum('none', 'v2', 'v3') NOT NULL default 'none',
+        captcha_score DECiMAL(3,2) NOT NULL default '0.00',
+        metadata JSON NULL,
+        taken TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         modified TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         PRIMARY KEY  (id)
@@ -167,6 +172,23 @@ function version_specific_changes($from_version, $to_version) {
             }
         }
     }
+
+    if ((float)$from_version < 1.16) {
+        $photos = $wpdb->get_results("SELECT * FROM $fpp_photos where UNIX_TIMESTAMP(taken) = 0");
+    
+        if ($photos) {
+            foreach ($photos as $photo) {
+                $result = $wpdb->update(
+                    $fpp_photos,
+                    array('taken' => $photo->created),
+                    array('id' => $photo->id),
+                    array('%s'),
+                    array('%d')
+                );
+                echo $result;
+            }
+        }
+    }
 }
 
 register_uninstall_hook(__FILE__, 'fpp_uninstall');
@@ -182,7 +204,8 @@ function fpp_update_db_check() {
         update_option( 'fpp_db_version', $fpp_db_version );
 
     }
-    fpp_reconcile();
+    // for development purposes only
+    // fpp_reconcile();
 }
 add_action( 'plugins_loaded', 'fpp_update_db_check' );
 
@@ -192,7 +215,13 @@ function fpp_reconcile() {
     global $wpdb, $fpp_photos;
     $limit = (int)get_option('fpp_reconcile_resize_count', 3);
 
-	$photos = $wpdb->get_results("SELECT * FROM {$fpp_photos} where thumb_200 is NULL LIMIT $limit");
+	$photos = $wpdb->get_results("SELECT * FROM {$fpp_photos} where image_2000 is NULL and status = 'approved' LIMIT $limit");
+
+    foreach ($photos as $photo) {
+        fpp_generate_display_image($photo);
+    }
+
+	$photos = $wpdb->get_results("SELECT * FROM {$fpp_photos} where `thumb_200` is NULL");
 
     foreach ($photos as $photo) {
         fpp_generate_thumbnail($photo);

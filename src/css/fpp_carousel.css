@@ -1,0 +1,262 @@
+div.timelapse-player {
+    display:block;
+    margin: auto;
+    border: 2px solid #333;
+    div.timelapse-container {
+        display:block;
+        position: relative;
+        overflow: hidden;
+        background-color: #666666;
+        height: 100%;
+        img {
+            position: absolute; /* Image is positioned absolutely within its container */
+            top: 50%;           /* Moves the top edge to the middle */
+            transform: translateY(-50%);
+            vertical-align: middle;
+            margin:auto;
+            /* width: 500px; */
+            width: 100%;
+        }
+        img.hidden {
+            display:none;
+        }
+    }
+    div.timelapse-header {
+        position: relative;
+        display: flex;
+        justify-content: flex-end;
+        height: 32px;
+        margin-bottom: -32px;
+        background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.7), transparent);
+        z-index: 2;
+        .sizing-button {
+            display: block;
+            width: 18px;
+            height: 18px;
+            margin: 5px;
+            background-size: cover;
+            border:none;
+            background-color: transparent;
+        }
+        .title {
+            margin-left: 15px;
+            text-align: left;
+            width: 100%;
+        }
+    }
+    div.timelapse-footer {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        background-image: linear-gradient(to bottom, transparent, black);
+        height: 60px;
+        margin-top: -60px;
+        padding-left: 10px;
+        padding-right: 10px;
+
+        .info-row {
+            position: relative;
+            display: flex;
+            flex-direction: row;
+            flex-wrap: nowrap;
+            justify-content: space-between;
+            padding: 5px;
+            color: #e4e4e4;
+            div.timelapse-caption {
+                margin-left: 15px;
+            }
+            div.help-text {
+                align-self: flex-end;
+                text-align: right;
+            }
+        }
+        .timelapse-controls {
+            display:inline-flex;
+            flex-direction:row;
+            flex-wrap: nowrap;
+            justify-content: flex-start;
+            vertical-align: middle;
+
+            button.play-button {
+                display: block;
+                /* padding: 6px; */
+                /* margin-bottom: 10px; */
+                border:none;
+                background-color: rgba(255, 255, 255, 0.717);
+                background-image: url('/wp-content/plugins/photolog/assets/play.svg');
+                background-repeat: no-repeat;
+            }
+            button.play-button:hover {
+                background-color: white;
+            }
+            .subcontrols {
+                position: relative;
+                display: flex;
+                flex-direction: column;
+                flex-wrap: nowrap;
+                justify-self: stretch;
+                width: 100%;
+                padding-right: 10px;
+                padding-left: 10px;
+                .nav {
+                    margin-top: 5px;
+                    flex-direction: row;
+                    flex-wrap: nowrap;
+                    justify-content: flex-end;
+                    button {
+                        width: 20px;
+                        height : 20px;
+                        border-radius: 10px;
+                        background-position: 5px 5px;
+                        background-size: 10px;
+                        border:none;
+                        background-color: rgba(255, 255, 255, 0.5);
+                        background-repeat: no-repeat;
+                    }
+                    button:hover {
+                        background-color: rgba(255, 255, 255, 0.8);
+                    }
+                    button:active {
+                        background-color: rgba(255, 255, 255, 0.95);
+                    }
+                    button.start {
+                        background-image: url('/wp-content/plugins/photolog/assets/start.svg');
+                    }
+                    button.previous {
+                        background-position: 5px 5.5px;
+                        background-size: 10px;
+                        background-image: url('/wp-content/plugins/photolog/assets/previous.svg');
+                    }
+                    button.next {
+                        background-position: 5px 5.5px;
+                        background-size: 10px;
+                        background-image: url('/wp-content/plugins/photolog/assets/next.svg');
+                    }
+                    button.end {
+                        background-image: url('/wp-content/plugins/photolog/assets/end.svg');
+                    }
+                    button.btn-minus {
+                        background-image: url('/wp-content/plugins/photolog/assets/minus.svg');
+                        background-position: 2px 2px;
+                        background-size: 16px;
+                    }
+                    button.btn-plus {
+                        background-image: url('/wp-content/plugins/photolog/assets/plus.svg');
+                        background-position: 2px 2px;
+                        background-size: 16px;
+                    }
+
+                    .rate {
+                        margin-right: 20px;
+                        display:flex;
+                        flex-direction: row;
+                        flex-wrap: nowrap;
+                    }
+                }
+                .seek-bar {
+                    position: relative; 
+                    background-color: rgba(255, 255, 255, 0.562);
+                    height: 11px;
+                    width: 100%;
+                    margin-top: 19px;
+                    align-self:stretch;
+                    vertical-align: middle;
+                    border-radius: 1px;
+
+                    .tick {
+                        background-color: white;
+                        /* background-color: white; */
+                        height: 100%;
+                        width: 2px;
+                        position: absolute;
+                        top:0px;
+                        z-index: 1;
+                    }
+
+                    div.cursor {
+                        background-color: white;
+                        /* background-color: white; */
+                        height: 17px;
+                        width: 2px;
+                        position: absolute;
+                        top:-3px;
+                        z-index: 2;
+                    }
+                    div.cursorbar {
+                        background-color: rgba(255, 0, 0, 0.7);
+                        /* background-color: white; */
+                        height: 11px;
+                        width: 2px;
+                        position: absolute;
+                        left: 0;
+                        top: 0;
+                        z-index: 1;
+                    }
+                }
+            }
+        }
+    }
+}
+
+div.timelapse-player.small.four-by-three {
+    aspect-ratio: 4/3;
+    width: 100%;
+}
+
+div.timelapse-player.small.two-by-one {
+    aspect-ratio: 2;
+    width: 100%;
+}
+
+div.timelapse-player.two-by-one .timelapse-header .sizing-button {
+    background-image: url('/wp-content/plugins/photolog/assets/expand.svg');
+}
+div.timelapse-player.four-by-three .timelapse-header .sizing-button {
+    background-image: url('/wp-content/plugins/photolog/assets/condense.svg');
+}
+
+div.timelapse-player.small button.play-button{
+    width: 50px;
+    height: 50px;
+    border-radius: 25px;
+    /* padding: 4px; */
+    background-position: 3px 3px;
+    background-size: 44px;
+}
+div.timelapse-player.playing div.timelapse-footer .timelapse-controls button.play-button{
+    background-image: url('/wp-content/plugins/photolog/assets/pause.svg');
+}
+
+
+@media (min-width: 1201px) {
+
+    div.timelapse-player .timelapse-controls {
+        .nav {
+            display: flex;
+        }
+    }
+}
+
+@media (min-width: 701px) and (max-width: 1200px) {
+
+    div.timelapse-player .timelapse-controls {
+        .nav {
+            display: flex;
+        }
+    }
+}
+
+@media (max-width: 700px) {
+    div.timelapse-player {
+        .timelapse-controls {
+            .nav {
+                display: none;
+            }
+        }
+        div.help-text {
+            display: none;
+        }
+    }
+}
