@@ -84,6 +84,7 @@
         /* Hides the original text */
         pointer-events: none;
         /* Prevents further clicks while busy */
+
     }
 
     /* The spinner pseudo-element */

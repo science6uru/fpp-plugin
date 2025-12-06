@@ -46,9 +46,9 @@ function fpp_admin_styles($hook) {
     )) {
         wp_enqueue_style(
             'fpp-admin-style', 
-            plugin_dir_url(__FILE__) . 'admin-style.css', 
+            plugin_dir_url(__FILE__) . 'css/admin-style.css', 
             array(), 
-            '1.5'
+            '1.7'
         );
     }
 }
@@ -56,37 +56,33 @@ function fpp_admin_styles($hook) {
 add_action( 'admin_menu', 'fpp_admin_register' );
 
 function fpp_admin_register() {
+    global $wpdb, $fpp_stations, $fpp_photos;
+    $notification = "";
+    if (!isset($_GET["page"]) || !str_starts_with($_GET['page'], "fpp")) {
+        $pending_photos = $wpdb->get_var("SELECT COUNT(*) FROM $fpp_photos where status = 'unreviewed'");
+        $notification = $pending_photos > 0?"<span class='awaiting-mod'>$pending_photos</span>":"";
+    }
     add_menu_page(
-        'FPP Plugin Admin',     // Page title
-        'FPP Admin',            // Menu title
-        'manage_options',       // Capability
-        'fpp-plugin-admin',     // Menu slug
-        'fpp_admin_render',     // Callback
-        'dashicons-camera',     // Icon (optional)
-        65                      // Position (optional)
-    );
-
-    // Add Stations Management page
-    add_submenu_page(
+        'Manage Photolog Stations', // Page title
+        'Photolog'.$notification,   // Menu title
+        'manage_options',           // Capability
         'fpp-plugin-admin',
-        'Manage Stations',
-        'Stations',
-        'manage_options',
-        'fpp-plugin-stations',
-        'fpp_stations_render'
+        'fpp_stations_render',
+        'dashicons-camera',         // Icon (optional)
+        65                          // Position (optional)
     );
 
     // Dynamically add station submenus
-    global $wpdb, $fpp_stations;
     $stations = $wpdb->get_results("SELECT * FROM $fpp_stations ORDER BY id ASC");
     
     if ($stations) {
         foreach ($stations as $station) {
-            
+            $pending_photos = $wpdb->get_var("SELECT COUNT(*) FROM $fpp_photos where station_id = $station->id and status = 'unreviewed'");
+            $notification = $pending_photos > 0?"<span class='awaiting-mod'>$pending_photos</span>":"";
             add_submenu_page(
                 'fpp-plugin-admin',
                 'Manage Station: ' . esc_html($station->name),
-                '(' . esc_html($station->id) . ') ' . esc_html($station->name),
+                esc_html($station->name) . $notification,
                 'edit_posts',
                 'fpp-plugin-manage-' . $station->slug,
                 'fpp_admin_manage_render'
@@ -1001,14 +997,8 @@ function fpp_check_admin_post() {
                         $station_id = intval($photo->station_id);
                         $file_path = fpp_photo_file_path($station_id, $photo->file_name);
                         $thumb_path = fpp_photo_file_path($station_id, $photo->thumb_200);
+                        $image_2000_path = fpp_photo_file_path($station_id, $photo->image_2000);
 
-                        //Delete from DB
-                        $wpdb->delete(
-                            $fpp_photos,
-                            array('id' => intval($id)),
-                            array('%d')
-                        );
-                        
                         // Delete from fs
                         if (file_exists($file_path)) {
                             @unlink($file_path);
@@ -1016,6 +1006,15 @@ function fpp_check_admin_post() {
                         if (file_exists($thumb_path)) {
                             @unlink($thumb_path);
                         }
+                        if (file_exists($image_2000_path)) {
+                            @unlink($image_2000_path);
+                        }
+                        //Delete from DB
+                        $wpdb->delete(
+                            $fpp_photos,
+                            array('id' => intval($id)),
+                            array('%d')
+                        );
                     }
                     break;
                 case 'fpp_photo_update_status':
@@ -1028,6 +1027,12 @@ function fpp_check_admin_post() {
                         array('%s'),
                         array('%d')
                     );
+                    if ($status == 'approved') {
+                        $photo = $wpdb->get_row("select * from $fpp_photos where id = ". intval($id). ";");
+                        if ($photo) {
+                            fpp_generate_display_image($photo);
+                        }
+                    }
                     break;
             }
             fpp_in_place_redirect();
@@ -1052,7 +1057,7 @@ function fpp_stations_render() {
 
     ?>
     <div class="wrap">
-        <h1>Manage FPP Stations</h1>
+        <h1>Manage Photolog Stations</h1>
         <?php settings_errors('fpp_stations'); ?>
 
         <!-- Add New Station -->

@@ -31,7 +31,11 @@ class PhotosAdminTable extends WP_List_Table
 			'thumbnail'    => 'Image',
 			'status'     => 'Status',
 			'ip' => 'IP Address',
-			'created' => 'Uploaded'
+			'captcha_score' => 'Captcha Score',
+			'captcha_mode' => 'Captcha Mode',
+			'created' => 'Uploaded',
+			'taken' => 'Taken',
+			'metadata' => "Metadata",
 		];
 		
 		// only when filtering by rejected status
@@ -46,7 +50,10 @@ class PhotosAdminTable extends WP_List_Table
 		$sortable_columns = [
 			'created' => ['created', false], // sortable true, default order ascending
 			'status'  => ['status', false],
+			'taken'  => ['taken', false],
 			'ip'  => ['ip', false],
+			'captcha_score'  => ['captcha_score', false],
+			'captcha_mode'  => ['captcha_mode', false],
 		];
 		return $sortable_columns;
 	}
@@ -74,10 +81,15 @@ class PhotosAdminTable extends WP_List_Table
 				$id_field = "<input name='fpp_photo_id' hidden value='$id'/>";
 				return "<form method='post'>$nonce $action $id_field <button class='button button-secondary' type='submit' onclick='return confirm(\"Are you sure you want to delete this photo?\")'>Delete</button></form>";
 			case 'ip':
+			case 'captcha_score':
+			case 'captcha_mode':
 			case 'created':
+			case 'taken':
 				return $item[$column_name];
 			case 'cb':
 				return "<input type='checkbox'/>";
+			case 'metadata':
+				return "<textarea readonly style='height:200px;'>".($item[$column_name]?json_encode(json_decode($item[$column_name]), JSON_PRETTY_PRINT) : "")."</textarea>";
 			default:
 				return print_r($item, true); // Show the whole array for troubleshooting purposes
 		}
@@ -156,20 +168,7 @@ $photos_table->prepare_items();
 	<h2>Manage Photos For <?= $station_name ?></h2>
 	<?php $photos_table->display(); ?>
 </div>
-<?php require plugin_dir_path(__FILE__) . "fpp-plugin-fpp_carousel.php" ?>
-
-<?php
-print "fpp db version is" . get_option('fpp_db_version');
-?>
 <div>
-	<b>Upload image to station <?= $station_name ?></b><br />
 	<?php echo do_shortcode("[fpp_upload station={$station_slug}]"); ?>
+	<?php echo do_shortcode("[fpp_carousel station={$station_slug}]"); ?>
 </div>
-<b>If you don't see 8M upload limit below, then rebuild your dev environment</b><br />
-<?php
-echo 'upload_max_filesize: ' . ini_get('upload_max_filesize') . '<br>';
-echo 'post_max_size: ' . ini_get('post_max_size') . '<br>';
-echo 'memory_limit: ' . ini_get('memory_limit') . '<br>';
-
-
-?>

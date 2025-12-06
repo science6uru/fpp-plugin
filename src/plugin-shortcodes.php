@@ -7,9 +7,7 @@ function fpp_template_render($atts, $content, $shortcode_tag) {
     $station_slug = $atts["station"] ?? ''; // Idk figure out how to handle default later
     $station = $wpdb->get_row($wpdb->prepare("SELECT * FROM $fpp_stations WHERE slug = %s", $station_slug));
     $station_name = $station->name;
-
-    wp_enqueue_script( $shortcode_tag );
-    wp_enqueue_style( $shortcode_tag  );
+    $station_id = $station->id;
 
     ob_start();
     require("fpp-plugin-$shortcode_tag.php");
@@ -18,6 +16,8 @@ function fpp_template_render($atts, $content, $shortcode_tag) {
         $output = ob_get_contents();
     }
     ob_end_clean();
+    wp_enqueue_script( $shortcode_tag );
+    wp_enqueue_style( $shortcode_tag  );
     return $output;
 }
 ?>

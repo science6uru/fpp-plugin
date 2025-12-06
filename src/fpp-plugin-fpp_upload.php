@@ -28,8 +28,8 @@ $v2_site_key = get_option('fpp_recaptcha_v2_site_key');
           <header>
             <h4 style="text-align:center;">Photo Submission for <?= $station_name ?> </h4>
           </header>
-          <p>Files Supported: JPEG, HEIC</p>
-          <input type="file" accept=".jpg,.heic,image/jpeg,image/heic" id="file-upload" name="user_photo" hidden style="display:none;" />
+          <p>Files Supported: JPEG</p>
+          <input type="file" accept=".jpg,.jpeg,image/jpeg" id="file-upload" name="user_photo" hidden style="display:none;" />
           <button id="file-upload-btn" class="filechooser wide">Select Photo to Upload</button>
         </div>
       </div>
@@ -45,25 +45,20 @@ $v2_site_key = get_option('fpp_recaptcha_v2_site_key');
           <div id="g-recaptcha"></div>
         </div>
         
-        <button type="submit" class="wide" id="upload-submit-btn">Upload File</button>
+        <button type="submit" class="wide busy" id="upload-submit-btn">Upload File</button>
         <button type="cancel" id="file-upload-cancel-btn" class="wide cancel">Select Different File</button>
         <input type="hidden" name="return_url" value="<?php echo htmlspecialchars($_SERVER['REQUEST_URI']); ?>">
         <input type="number" readonly id="image_width" hidden name="image_width" style="width: 33%;display:none;" />
         <input type="number" readonly id="image_height" hidden name="image_height" style="width: 33%;display:none;" />
         <input type="number" readonly id="image_size" hidden name="image_size" style="width: 30%;display:none;" />
       </div>
-  </div>
   <?php if (!empty($site_key)): ?>
-    <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response">
+    <input type="hidden" name="g-recaptcha-response" id="g-recaptcha-response"/>
   <?php endif; ?>
-  <input type="hidden" name="g-recaptcha-response-v2" id="g-recaptcha-response-v2">
+  <input type="hidden" name="g-recaptcha-score-v3" id="g-recaptcha-score-v3"/>
+  <input type="hidden" name="g-recaptcha-response-v2" id="g-recaptcha-response-v2"/>
 <?php
       endif;
 ?>
-
-
+  </div>
 </form>
-
-<script>
-
-</script>

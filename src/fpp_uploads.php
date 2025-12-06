@@ -6,6 +6,16 @@ if (!function_exists('wp_handle_upload')) {
     require_once(ABSPATH . 'wp-admin/includes/file.php');
 }
 
+function fpp_write_log($log) {
+    if (true === WP_DEBUG) {
+        if (is_array($log) || is_object($log)) {
+            error_log(print_r($log, true));
+        } else {
+            error_log($log);
+        }
+    }
+}
+
 function fpp_get_user_ip() {
     if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
         // IP from shared internet
@@ -109,21 +119,9 @@ function fpp_generate_thumbnail($photo) {
     $filepath = $path . "/" . $filename;
 
     if (empty($filename)) {
-        $wpdb->delete(
-            $fpp_photos,
-            array(
-                'id' => $photo->id,
-            )
-        );
         return;
     }
     if (!file_exists($filepath)) {
-        $wpdb->delete(
-            $fpp_photos,
-            array(
-                'id' => $photo->id,
-            )
-        );
         return;
     }
     // Get only the filename without the extension
@@ -132,6 +130,27 @@ function fpp_generate_thumbnail($photo) {
     if (fpp_create_image_resized($filepath, 300, 200, $path . "/" . $thumbname)) {
         $updated = $wpdb->update($fpp_photos,
                         array('thumb_200' => $thumbname),
+                        array('id' => $photo->id));
+    }
+}
+function fpp_generate_display_image($photo) {
+    global $wpdb, $fpp_photos;
+    $filename = $photo->file_name;
+    $path = fpp_photos_dir($photo->station_id);
+    $filepath = $path . "/" . $filename;
+    // Get only the filename without the extension
+
+    if (empty($filename)) {
+        return;
+    }
+    if (!file_exists($filepath)) {
+        return;
+    }
+    $basename = pathinfo($filepath, PATHINFO_FILENAME);
+    $thumbname = $basename . "-image_2000.jpg";
+    if (fpp_create_image_resized($filepath, 2000, 2000, $path . "/" . $thumbname)) {
+        $updated = $wpdb->update($fpp_photos,
+                        array('image_2000' => $thumbname),
                         array('id' => $photo->id));
     }
 }
@@ -309,7 +328,11 @@ function fpp_process_upload(WP_REST_Request $request) {
     }
 
     $temp_file_path = $uploaded_file['tmp_name'];
-    $metadata = wp_read_image_metadata( $temp_file_path );
+    $metadata = exif_read_data( $temp_file_path );
+    // echo "<html><body>";
+    // var_dump($metadata);
+    // echo "</body></html>";
+    // exit();
     
     $v3_token = $request->get_param('g-recaptcha-response');
     $v2_token = $request->get_param('g-recaptcha-response-v2');
@@ -323,6 +346,9 @@ function fpp_process_upload(WP_REST_Request $request) {
     if ($validateV3 && empty($v2_token)) {
         $validateV2 = false;
     }
+
+    $score = $request->get_param('g-recaptcha-score-v3');
+    $captcha_mode = "none";
     // If v3 is configured, use it
     if ($validateV3) {
         if (empty($v3_token)) {
@@ -338,6 +364,7 @@ function fpp_process_upload(WP_REST_Request $request) {
         $low_threshold = floatval(get_option('fpp_recaptcha_low_threshold', '0.3'));
         $high_threshold = floatval(get_option('fpp_recaptcha_high_threshold', '0.7'));
         $score = $v3_result['score'];
+        $captcha_mode = "v3";
 
         // Score below low threshold
         if ($score < $low_threshold) {
@@ -346,7 +373,7 @@ function fpp_process_upload(WP_REST_Request $request) {
         
         // Score between low and high thresholds require v2
         if ($score >= $low_threshold && $score < $high_threshold) {
-            if (empty($v2_token)) {
+            if (!$validateV2) {
                 return new WP_REST_Response(array(
                     'error' => 'v2_required',
                     'message' => 'Additional security verification required.'
@@ -355,9 +382,12 @@ function fpp_process_upload(WP_REST_Request $request) {
             
             // ver v2 token
             $v2_result = fpp_verify_recaptcha_v2($v2_token, $remote_ip);
+            $validateV2 = false;
             if (!$v2_result['success']) {
                 return new WP_REST_Response(array('error' => 'reCAPTCHA v2 verification failed. Please try again.'), 400);
             }
+            $captcha_mode = "v2";
+
         }
         
         // score above high threshold accept without v2
@@ -372,25 +402,45 @@ function fpp_process_upload(WP_REST_Request $request) {
         if (!$v2_result['success']) {
             return new WP_REST_Response(array('error' => 'reCAPTCHA v2 verification failed. Please try again.'), 400);
         }
+        $captcha_mode = "v2";
+
     }
     // If neither isset , skip 
 
     $user_ip = fpp_get_user_ip();
-
     $wpdb->query('START TRANSACTION');
+    $field_values = array(
+                        'ip' => $user_ip,
+                        'station_id' => $station->id,
+                        'file_name' => uniqid(),
+                        'captcha_score' => sprintf("%.2f", $score),
+                        'captcha_mode' => $captcha_mode,
+                        'metadata' => json_encode($metadata),
+                    );
+    $field_formats = array(
+                        '%s', // Format for ip
+                        '%d', // Format for station_id
+                        '%s', // Format for file_name
+                        '%s', // Format for score (decimal-string)
+                        '%s', // Format for captcha_mode
+                        '%s', // Format for metadata
+                    );  
+    try {
+        if (isset($metadata['created_timestamp']) && $metadata['created_timestamp'] != "0" && filter_var($metadata['created_timestamp'], FILTER_VALIDATE_INT) !== false) {
+            $field_values['taken'] = gmdate('Y-m-d H:i:s', intval($metadata['created_timestamp']));
+            $field_formats[] = '%s';
+        } else if (isset($metadata['DateTimeOriginal'])) {
+            $field_values['taken'] = $metadata['DateTimeOriginal'];
+            $field_formats[] = '%s';
+        }
+    } catch (Exception $e) {
+        fpp_write_log($e->getMessage());
+    }
     try {
         $created = $wpdb->insert(
             $fpp_photos,
-            array(
-                'ip' => $user_ip,
-                'station_id' => $station->id,
-                'file_name' => uniqid(),
-            ),
-            array(
-                '%s', // Format for ip
-                '%d', // Format for station_id
-                '%s', // Format for file_name
-            )
+            $field_values,
+            $field_formats
         );
 
         if ($created == false) {
@@ -406,12 +456,6 @@ function fpp_process_upload(WP_REST_Request $request) {
             'test_type' => true,
             'mimes' => array(
                 'jpg|jpeg|jpe' => 'image/jpeg',
-                'gif' => 'image/gif',
-                'png' => 'image/png',
-                'bmp' => 'image/bmp',
-                'tif|tiff' => 'image/tiff',
-                'ico' => 'image/x-icon',
-                'heic' => 'image/heic',
             ),
             'unique_filename_callback' => function( $dir, $name, $ext ) use ($user_ip, $photo_id){
                 global $wpdb, $fpp_photos;
