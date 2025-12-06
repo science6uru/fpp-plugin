@@ -1086,7 +1086,7 @@ function fpp_stations_render() {
                         <th class="photos-col">Photos</th>
                         <th class="slug-col">Upload Page Slug</th>
                         <th style="width:180px;">Actions</th>
-                        <th class="upload-shortcode-col">Upload Shortcode</th>
+                        <th class="shortcodes-col">Shortcodes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1128,8 +1128,13 @@ function fpp_stations_render() {
                                 </button>
                             </form>
                         </td>
-                        <td style="text-align:left;" class="upload-shortcode-col">
-                            <input type="text" readonly value="[fpp_upload station=<?= $station->slug ?>]"/>
+                        <td style="text-align:left;" class="shortcodes-col">
+                            <div style="margin-bottom: 8px;">
+                                <input type="text" readonly value="[fpp_upload station=<?= $station->slug ?>]"/>
+                            </div>
+                            <div>
+                                <input type="text" readonly value="[fpp_carousel station=<?= $station->slug ?>]"/>
+                            </div>
                         </td>
                     </tr>
                     <?php endforeach; ?>
