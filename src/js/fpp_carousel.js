@@ -282,7 +282,15 @@
         }
     }
 
+    function fppPreloadImg(name) {
+        let img = new Image();
+        img.src = name;
+    }
+
     $(document).ready(function() {
+        fppPreloadImg('/wp-content/plugins/photolog/assets/pause.svg');
+        fppPreloadImg('/wp-content/plugins/photolog/assets/condense.svg');
+
         $("[id^=timelapse-player-]").each(function(index, element) {
             var id = $(this).attr("id");
             var data = window[id.replaceAll("-", "_")];
@@ -300,11 +308,11 @@
         });
         $(".timelapse-player").hover(
             function () {
-                $(this).find(".timelapse-header").slideDown(100);
-                $(this).find(".timelapse-controls").fadeIn(100);
+                $(this).find(".timelapse-header").removeClass("hidden");
+                $(this).find(".timelapse-controls").removeClass("hidden");
             }, function () {
-                $(this).find(".timelapse-controls").fadeOut(100);
-                $(this).find(".timelapse-header").slideUp(100);
+                $(this).find(".timelapse-controls").addClass("hidden");
+                $(this).find(".timelapse-header").addClass("hidden");
         });
         $(".timelapse-player [tooltip]").hover(
             function() {
@@ -315,5 +323,10 @@
                 $(this).closest(".timelapse-player").find(".help-text").html("");
             }
         );
+        var modal = new PhotologModal("#fpp-carousel-info");
+        $(".timelapse-player a.info-link").click(function() {
+            // alert("clicked");
+            modal.show();
+        });
     });
 })(jQuery);

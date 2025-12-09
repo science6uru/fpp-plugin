@@ -260,7 +260,13 @@
             $("#file-display").show();
             preview.attr("src", previewUrl);
         });
-        
 
+
+        var modal = new PhotologModal("#fpp-info-modal");
+
+        $(".fpp_container a.info-link").click(function() {
+            // alert("clicked");
+            modal.show();
+        });
     });
 })(jQuery);

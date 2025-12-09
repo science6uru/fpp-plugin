@@ -1,6 +1,7 @@
 <div class="timelapse-player small two-by-one">
     <div class="timelapse-header">
         <div class="title">Chronological Conservation - <?=  $station_name ?></div>
+        <a class="info-link"><img src="/wp-content/plugins/photolog/assets/info.svg" /></a>
         <button class="sizing-button"></button>
     </div>
     <div class="timelapse-container" id="timelapse-player-<?= $station_slug ?>">
@@ -31,6 +32,24 @@
         <div class="info-row">
             <div class="timelapse-caption">Loading...</div>
             <div class="help-text"></div>
+        </div>
+    </div>
+</div>
+
+<div id="fpp-carousel-info" class="fpp_modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <!-- Link to close the modal by navigating to the main page fragment -->
+            <a href="#" class="close-btn">&times;</a>
+            <h2>Chronological Conservation</h2>
+            <h4>Photolog plugin</h4>
+        </div>
+        <div class="modal-body">
+            <p>This plugin was developed as part of an Eagle Scout Service Project to enhance conservation efforts at the Sprint Creek Forest Preserve.</p>
+            <p>Learn more about <a href="https://springcreekforest.org/news-items/scout-project-fixed-point-photography-stations-for-environmental-analysis/">the project</a>.</p><br/>
+        </div>
+        <div class="modal-footer">
+            <p>View on <a href="https://github.com/science6uru/fpp-plugin" target="_blank">GitHub</a>.</p>
         </div>
     </div>
 </div>
