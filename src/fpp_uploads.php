@@ -559,28 +559,11 @@ function fpp_process_upload(WP_REST_Request $request) {
             $photo = $wpdb->get_row("select * from $fpp_photos where id = $photo_id");
             if(!fpp_generate_thumbnail($photo)) {
                 fpp_upload_redirect($station, "processing-error");
+                return new WP_REST_Response(array(
+                    'error' => "Internal Server Error: Could not persist data",
+                ), 500);
             }
             fpp_upload_redirect($station, "success");
-            // if (isset($_POST["return_url"])) {
-            //     $return_url = htmlspecialchars_decode($_POST['return_url']);
-            //     if ($return_url) {
-            //         $parsed = parse_url($return_url);
-            //         $query = Array();
-            //         if (isset($parsed['query'])) {
-            //             parse_str($parsed['query'], $query);
-            //         }
-            //         $query['uploaded'] = 'success';
-            //         $http_query = http_build_query($query);
-            //         $fragment = isset($parsed['fragment']) ? "#" . $parsed['fragment'] : "";
-                    
-            //         header("Location:".$parsed['path'] .'?'. $http_query . $fragment);
-            //         exit();
-            //     }
-            // }
-            // if (!empty($station->upload_page_slug)) {
-            //     header("Location:".fpp_get_slug_page_link($station->upload_page_slug). "?uploaded=success");
-            //     exit();
-            // }
             return new WP_REST_Response(array(
                 'message' => 'File uploaded successfully!',
                 'path' => $upload_result['file'],
