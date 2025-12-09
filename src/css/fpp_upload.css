@@ -140,6 +140,13 @@
         background-color: #fff;
         outline: 1px solid #dc3232;
     }
+    a.info-link img{
+        width: 1.5rem;
+        height: 1.5rem;
+        position: absolute;
+        cursor: pointer;
+    }
+
 }
 
 /* Keyframes for the spinner animation */

@@ -62,7 +62,8 @@ class PhotosAdminTable extends WP_List_Table
 		switch ($column_name) {
 			case 'thumbnail':
 				$thumbname = $this->basedir . "/" . $item['thumb_200'];
-				return "<img src='$thumbname'/>";
+				$filename = $this->basedir . "/" . $item['file_name'];
+				return "<a href='$filename' target='_blank'><img src='$thumbname'/></a>";
 			case 'status':
 				$status = $item["status"];
 				$id = $item["id"];
@@ -163,12 +164,28 @@ class PhotosAdminTable extends WP_List_Table
 $photos_table = new PhotosAdminTable($station_id);
 $photos_table->prepare_items();
 ?>
-
-<div class="wrap fpp-photos-table">
-	<h2>Manage Photos For <?= $station_name ?></h2>
-	<?php $photos_table->display(); ?>
-</div>
-<div>
-	<?php echo do_shortcode("[fpp_upload station={$station_slug}]"); ?>
-	<?php echo do_shortcode("[fpp_carousel station={$station_slug}]"); ?>
+<h1><?= $station_name ?></h1>
+<div class="wrap">
+	<div class="fpp-tabber">
+		<div class="fpp-tab-group">
+			<a class="fpp-tab" href="#manage-photos" id="tab-manage-photos">Manage Photos</a>
+			<a class="fpp-tab" href="#upload-photo" id="tab-upload-photo">Upload Photo</a>
+			<a class="fpp-tab" href="#view-timelapse" id="tab-view-timelapse">View Timelapse</a>
+		</div>
+		<div class="fpp-tab-views">
+			<div class="fpp-tab-view" id="view-manage-photos">
+				<div class="fpp-photos-table">
+					<?php $photos_table->display(); ?>
+				</div>
+			</div>
+			<div class="fpp-tab-view" id="view-upload-photo">
+				<?php echo do_shortcode("[fpp_upload station={$station_slug}]"); ?>
+			</div>
+			<div class="fpp-tab-view" id="view-view-timelapse">
+				<div style="width:80%;margin:auto;">
+					<?php echo do_shortcode("[fpp_carousel station={$station_slug}]"); ?>
+				</div>
+			</div>
+		</div>
+	</div>
 </div>

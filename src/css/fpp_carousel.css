@@ -21,14 +21,26 @@ div.timelapse-player {
             display:none;
         }
     }
+    a.info-link {
+        margin-right: 1em;
+    }
+    a.info-link img{
+        width: 18px;
+        height: 18px;
+        margin: 5px;
+        /* position: absolute; */
+        cursor: pointer;
+    }
     div.timelapse-header {
-        position: relative;
+        position:relative;
         display: flex;
-        justify-content: flex-end;
+        justify-content:space-between;
         height: 32px;
         margin-bottom: -32px;
         background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0.7), transparent);
-        z-index: 2;
+        z-index: 1;
+        transition: opacity 0.3s ease-in-out;
+        opacity: 1;
         .sizing-button {
             display: block;
             width: 18px;
@@ -43,6 +55,9 @@ div.timelapse-player {
             text-align: left;
             width: 100%;
         }
+    }
+    div.timelapse-header.hidden {
+        opacity:0;
     }
     div.timelapse-footer {
         position: relative;
@@ -78,6 +93,8 @@ div.timelapse-player {
             flex-wrap: nowrap;
             justify-content: flex-start;
             vertical-align: middle;
+            opacity: 1;
+            transition: opacity 0.3s ease-in-out;
 
             button.play-button {
                 display: block;
@@ -87,6 +104,7 @@ div.timelapse-player {
                 background-color: rgba(255, 255, 255, 0.717);
                 background-image: url('/wp-content/plugins/photolog/assets/play.svg');
                 background-repeat: no-repeat;
+                cursor: pointer;
             }
             button.play-button:hover {
                 background-color: white;
@@ -114,6 +132,7 @@ div.timelapse-player {
                         border:none;
                         background-color: rgba(255, 255, 255, 0.5);
                         background-repeat: no-repeat;
+                        cursor: pointer;
                     }
                     button:hover {
                         background-color: rgba(255, 255, 255, 0.8);
@@ -164,6 +183,7 @@ div.timelapse-player {
                     align-self:stretch;
                     vertical-align: middle;
                     border-radius: 1px;
+                    cursor: pointer;
 
                     .tick {
                         background-color: white;
@@ -197,6 +217,9 @@ div.timelapse-player {
                 }
             }
         }
+        .timelapse-controls.hidden {
+            opacity: 0;
+        }
     }
 }
 
@@ -212,9 +235,11 @@ div.timelapse-player.small.two-by-one {
 
 div.timelapse-player.two-by-one .timelapse-header .sizing-button {
     background-image: url('/wp-content/plugins/photolog/assets/expand.svg');
+    cursor: pointer;
 }
 div.timelapse-player.four-by-three .timelapse-header .sizing-button {
     background-image: url('/wp-content/plugins/photolog/assets/condense.svg');
+    cursor: pointer;
 }
 
 div.timelapse-player.small button.play-button{

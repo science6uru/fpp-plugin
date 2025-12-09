@@ -307,7 +307,7 @@
     .wp-list-table .column-thumbnail { 
         width: 270px !important; 
         img {
-            height: 200px;
+            width: 267px;
         }
     }
     .wp-list-table .column-metadata { 
@@ -322,7 +322,7 @@
     .wp-list-table .column-thumbnail { 
         width: 200px !important; 
         img {
-            height: 150px;
+            width: 200px;
         }
     }
     .wp-list-table .column-metadata { 
@@ -337,13 +337,39 @@
     .wp-list-table .column-thumbnail { 
         width: 135px !important; 
         img {
-            height: 100px;
+            width: 134px;
         }
     }
     .wp-list-table .column-metadata { 
         width: 250px !important; 
         textarea {
             width: 250px;
+        }
+    }
+}
+
+.fpp-tabber {
+    .fpp-tab-group {
+        .fpp-tab {
+            border: 1px solid #155724;
+            padding: 0.5em;
+            text-decoration: none;
+        }
+        .fpp-tab.active {
+            background-color: #135e96;
+            color: white;
+        }
+    }
+
+    .fpp-tab-views {
+        .fpp-tab-view {
+            display: none;
+        }
+        .fpp-tab-view.active {
+            display:block;
+        }
+        #view-upload-photo, #view-view-timelapse {
+            margin-top: 2rem;
         }
     }
 }

@@ -68,7 +68,11 @@ function fpp_get_rotation($filename) {
 
 function fpp_create_image_resized($fileName, $maxWidth, $maxHeight, $destination) {
     // Get original image dimensions and type
-    list($sourceImageWidth, $sourceImageHeight, $uploadImageType) = getimagesize($fileName);
+    $imageInfo = getimagesize($fileName);
+    if (! $imageInfo) {
+        return false;
+    }
+    list($sourceImageWidth, $sourceImageHeight, $uploadImageType) = $imageInfo;
     if($sourceImageWidth == 0 || $sourceImageHeight == 0) {
         return false;
     }
@@ -98,15 +102,22 @@ function fpp_create_image_resized($fileName, $maxWidth, $maxHeight, $destination
 
     // Create a new true color image (destination layer) with the new dimensions
     $targetLayer = imagecreatetruecolor($newWidth, $newHeight);
-
+    if (!$targetLayer) {
+        return false;
+    }
     // Resize the image using imagecopyresampled for better quality
-    imagecopyresampled($targetLayer, $sourceImage, 0, 0, 0, 0,
+    $resampleSuccess = imagecopyresampled($targetLayer, $sourceImage, 0, 0, 0, 0,
         $newWidth, $newHeight, $sourceImageWidth, $sourceImageHeight);
-
+    if (!$resampleSuccess) {
+        return false;
+    }
     // Save the resized image to the destination file
     switch ($uploadImageType) {
         case IMAGETYPE_JPEG:
-            imagejpeg($targetLayer, $destination, 85); // Quality 0-100
+            $createSuccess = imagejpeg($targetLayer, $destination, 85); // Quality 0-100
+            if (!$createSuccess) {
+                return false;
+            }
             break;
     }
     return true;
@@ -119,10 +130,10 @@ function fpp_generate_thumbnail($photo) {
     $filepath = $path . "/" . $filename;
 
     if (empty($filename)) {
-        return;
+        return false;
     }
     if (!file_exists($filepath)) {
-        return;
+        return false;
     }
     // Get only the filename without the extension
     $basename = pathinfo($filepath, PATHINFO_FILENAME);
@@ -131,7 +142,11 @@ function fpp_generate_thumbnail($photo) {
         $updated = $wpdb->update($fpp_photos,
                         array('thumb_200' => $thumbname),
                         array('id' => $photo->id));
+        if ($updated) {
+            return true;
+        }
     }
+    return false;
 }
 function fpp_generate_display_image($photo) {
     global $wpdb, $fpp_photos;
@@ -141,10 +156,10 @@ function fpp_generate_display_image($photo) {
     // Get only the filename without the extension
 
     if (empty($filename)) {
-        return;
+        return false;
     }
     if (!file_exists($filepath)) {
-        return;
+        return false;
     }
     $basename = pathinfo($filepath, PATHINFO_FILENAME);
     $thumbname = $basename . "-image_2000.jpg";
@@ -152,7 +167,11 @@ function fpp_generate_display_image($photo) {
         $updated = $wpdb->update($fpp_photos,
                         array('image_2000' => $thumbname),
                         array('id' => $photo->id));
+        if ($updated) {
+            return true;
+        }
     }
+    return false;
 }
 /**
  * Generates a unique filename for photos uploaded to FPP stations.
@@ -249,6 +268,29 @@ function fpp_verify_recaptcha_v2($token, $remote_ip) {
     return array('success' => true, 'response' => $response_data);
 }
 
+function fpp_upload_redirect($station, $status) {
+    if (isset($_POST["return_url"])) {
+        $return_url = htmlspecialchars_decode($_POST['return_url']);
+        if ($return_url) {
+            $parsed = parse_url($return_url);
+            $query = Array();
+            if (isset($parsed['query'])) {
+                parse_str($parsed['query'], $query);
+            }
+            $query['uploaded'] = $status;
+            $http_query = http_build_query($query);
+            $fragment = isset($parsed['fragment']) ? "#" . $parsed['fragment'] : "";
+            
+            header("Location:".$parsed['path'] .'?'. $http_query . $fragment);
+            exit();
+        }
+    }
+    if ($station && !empty($station->upload_page_slug)) {
+        header("Location:".fpp_get_slug_page_link($station->upload_page_slug). "?uploaded=success");
+        exit();
+    }
+}
+
 /** Handle the user uploads */
 function fpp_process_upload(WP_REST_Request $request) {
     global $wpdb, $fpp_stations, $fpp_photos;
@@ -260,6 +302,7 @@ function fpp_process_upload(WP_REST_Request $request) {
 
     if ($wpdb->last_error or $station == NULL) {
         error_log("Station lookup error: " . $wpdb->last_error);
+        fpp_upload_redirect($station, "server-error");
         return new WP_REST_Response(array(
             'error' => "Invalid station",
         ), 404);
@@ -268,12 +311,14 @@ function fpp_process_upload(WP_REST_Request $request) {
     $target_dir = fpp_photos_dir($station_id);
     
     if (!is_dir($target_dir)) {
+        fpp_upload_redirect($station, "server-error");
         return new WP_REST_Response(array(
             'error' => 'Upload directory does not exist.',
         ), 500);
     }
 
     if (!is_writable($target_dir)) {
+        fpp_upload_redirect($station, "server-error");
         return new WP_REST_Response(array(
             'error' => 'Upload directory is not writable.',
         ), 500);
@@ -285,6 +330,7 @@ function fpp_process_upload(WP_REST_Request $request) {
 
     // better error handling
     if ( ! isset( $uploaded_file ) || ! is_array( $uploaded_file ) ) {
+        fpp_upload_redirect($station, "processing-error");
         return new WP_REST_Response( array( 'error' => 'No file uploaded.' ), 400 );
     }
 
@@ -298,6 +344,7 @@ function fpp_process_upload(WP_REST_Request $request) {
                 'Uploaded file is too large. PHP limit: %s',
                 esc_html($server_upload)
             );
+            fpp_upload_redirect($station, "too-large");
             return new WP_REST_Response( array( 'error' => $msg ), 400 );
         }
         
@@ -310,6 +357,7 @@ function fpp_process_upload(WP_REST_Request $request) {
             UPLOAD_ERR_EXTENSION => 'A PHP extension stopped the file upload.',
         );
         $msg = isset( $errors[$code] ) ? $errors[$code] : ( 'Upload error code: ' . intval( $code ) );
+        fpp_upload_redirect($station, "server-error");
         return new WP_REST_Response( array( 'error' => $msg ), 400 );
     }
 
@@ -318,6 +366,7 @@ function fpp_process_upload(WP_REST_Request $request) {
     if ( $configured_mb > 0 ) {
         $configured_bytes = (int) round( $configured_mb * 1024 * 1024 );
         if ( isset( $uploaded_file['size'] ) && $uploaded_file['size'] > $configured_bytes ) {
+            fpp_upload_redirect($station, "too-large");
             return new WP_REST_Response( array(
                 'error' => sprintf(
                     'File exceeds maximum size of %s MB.',
@@ -352,12 +401,14 @@ function fpp_process_upload(WP_REST_Request $request) {
     // If v3 is configured, use it
     if ($validateV3) {
         if (empty($v3_token)) {
+            fpp_upload_redirect($station, "invalid-form");
             return new WP_REST_Response(array('error' => 'reCAPTCHA v3 token is missing.'), 400);
         }
 
         $v3_result = fpp_verify_recaptcha_v3($v3_token, $remote_ip);
         
         if (!$v3_result['success']) {
+            fpp_upload_redirect($station, "invalid-form");
             return new WP_REST_Response(array('error' => 'reCAPTCHA v3 verification failed: ' . ($v3_result['error'] ?? 'Unknown error')), 400);
         }
 
@@ -368,12 +419,14 @@ function fpp_process_upload(WP_REST_Request $request) {
 
         // Score below low threshold
         if ($score < $low_threshold) {
+            fpp_upload_redirect($station, "invalid-form");
             return new WP_REST_Response(array('error' => 'reCAPTCHA verification failed (low score). Please try again.'), 400);
         }
         
         // Score between low and high thresholds require v2
         if ($score >= $low_threshold && $score < $high_threshold) {
             if (!$validateV2) {
+                fpp_upload_redirect($station, "invalid-form");
                 return new WP_REST_Response(array(
                     'error' => 'v2_required',
                     'message' => 'Additional security verification required.'
@@ -384,6 +437,7 @@ function fpp_process_upload(WP_REST_Request $request) {
             $v2_result = fpp_verify_recaptcha_v2($v2_token, $remote_ip);
             $validateV2 = false;
             if (!$v2_result['success']) {
+                fpp_upload_redirect($station, "invalid-form");
                 return new WP_REST_Response(array('error' => 'reCAPTCHA v2 verification failed. Please try again.'), 400);
             }
             $captcha_mode = "v2";
@@ -395,11 +449,13 @@ function fpp_process_upload(WP_REST_Request $request) {
     // If v3 is not configured but v2 is, use v2
     if ($validateV2) {
         if (empty($v2_token)) {
+            fpp_upload_redirect($station, "invalid-form");
             return new WP_REST_Response(array('error' => 'reCAPTCHA v2 token is missing.'), 400);
         }
 
         $v2_result = fpp_verify_recaptcha_v2($v2_token, $remote_ip);
         if (!$v2_result['success']) {
+            fpp_upload_redirect($station, "invalid-form");
             return new WP_REST_Response(array('error' => 'reCAPTCHA v2 verification failed. Please try again.'), 400);
         }
         $captcha_mode = "v2";
@@ -445,6 +501,7 @@ function fpp_process_upload(WP_REST_Request $request) {
 
         if ($created == false) {
             $wpdb->query('ROLLBACK');
+            fpp_upload_redirect($station, "processing-error");
             return new WP_REST_Response(array(
                 'error' => "Error processing request",
             ), 500);
@@ -494,22 +551,36 @@ function fpp_process_upload(WP_REST_Request $request) {
                 // If COMMIT fails, explicitly rollback
                 $wpdb->query( 'ROLLBACK' );
                 error_log( 'wpdb: COMMIT failed, transaction rolled back.' );
+                fpp_upload_redirect($station, "processing-error");
                 return new WP_REST_Response(array(
                     'error' => "Internal Server Error: Could not persist data",
                 ), 500);
             }
             $photo = $wpdb->get_row("select * from $fpp_photos where id = $photo_id");
-            fpp_generate_thumbnail($photo);
-            if (isset($_POST["return_url"])) {
-                $return_url = htmlspecialchars_decode($_POST['return_url']);
-                $upload_param = str_contains($return_url, "?") ? "&uploaded=success" : "?uploaded=success";
-                header("Location:".$return_url . $upload_param);
-                exit();
+            if(!fpp_generate_thumbnail($photo)) {
+                fpp_upload_redirect($station, "processing-error");
             }
-            if (!empty($station->upload_page_slug)) {
-                header("Location:".fpp_get_slug_page_link($station->upload_page_slug). "?uploaded=true");
-                exit();
-            }
+            fpp_upload_redirect($station, "success");
+            // if (isset($_POST["return_url"])) {
+            //     $return_url = htmlspecialchars_decode($_POST['return_url']);
+            //     if ($return_url) {
+            //         $parsed = parse_url($return_url);
+            //         $query = Array();
+            //         if (isset($parsed['query'])) {
+            //             parse_str($parsed['query'], $query);
+            //         }
+            //         $query['uploaded'] = 'success';
+            //         $http_query = http_build_query($query);
+            //         $fragment = isset($parsed['fragment']) ? "#" . $parsed['fragment'] : "";
+                    
+            //         header("Location:".$parsed['path'] .'?'. $http_query . $fragment);
+            //         exit();
+            //     }
+            // }
+            // if (!empty($station->upload_page_slug)) {
+            //     header("Location:".fpp_get_slug_page_link($station->upload_page_slug). "?uploaded=success");
+            //     exit();
+            // }
             return new WP_REST_Response(array(
                 'message' => 'File uploaded successfully!',
                 'path' => $upload_result['file'],
@@ -520,6 +591,7 @@ function fpp_process_upload(WP_REST_Request $request) {
         } else {
             // Failure for whatever reason
             $wpdb->query('ROLLBACK');
+            fpp_upload_redirect($station, "processing-error");
             return new WP_REST_Response(array(
                 'error' => $upload_result['error'],
             ), 400);
@@ -528,36 +600,11 @@ function fpp_process_upload(WP_REST_Request $request) {
         // If any error occurs, rollback the transaction
         $wpdb->query('ROLLBACK');
         error_log('Transaction failed: ' . $e->getMessage());
+        fpp_upload_redirect($station, "processing-error");
         return new WP_REST_Response(array(
             'error' => "Internal Server Error {$e->getMessage()}",
         ), 500);
     }
-    /*
-
-    // You can access parameters via direct array access on the object:
-    $param = $request['user_photo'];
-
-  // Or via the helper method:
-  $param = $request->get_param( 'some_param' );
-
-  // You can get the combined, merged set of parameters:
-  $parameters = $request->get_params();
-
-  // The individual sets of parameters are also available, if needed:
-  $parameters = $request->get_url_params();
-  $parameters = $request->get_query_params();
-  $parameters = $request->get_body_params();
-  $parameters = $request->get_json_params();
-  $parameters = $request->get_default_params();
-
-  // Uploads aren't merged in, but can be accessed separately:
-  $parameters = $request->get_file_params();
-  # file is temporarially stored on server
-  # need to move to a new location on save
-  # new file name needs to be generated and unique
-  #   look into uuid for filenames and maybe organize them by station directories
-  # see. https://www.php.net/manual/en/features.file-upload.post-method.php
-*/
 }
 
 /** Register the upload route */
