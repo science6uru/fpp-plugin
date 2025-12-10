@@ -873,9 +873,9 @@ function fpp_photo_file_path($station_id, $filename) {
 
 function fpp_check_admin_post() {
     global $wpdb, $fpp_stations, $fpp_photos;
-    if (isset($_POST['action']) && in_array($_POST['action'] , ['add_station', 'update_station', 'delete_station', 'update_station_upload_slug', 'fpp_photo_delete', 'fpp_photo_update_status'])) {
+    if (isset($_POST['action']) && in_array($_POST['action'] , ['add_station', 'update_station', 'delete_station', 'update_station_upload_slug', 'fpp_photo_delete', 'fpp_photo_update_status', 'fpp_regen_image', 'fpp_collect_meta'])) {
         $nonce_action = "fpp_stations_nonce";
-        if (in_array($_POST['action'], ['fpp_photo_update_status', 'fpp_photo_delete'])) {
+        if (in_array($_POST['action'], ['fpp_photo_update_status', 'fpp_photo_delete', 'fpp_regen_image', 'fpp_collect_meta'])) {
             $nonce_action = 'fpp_photo_manage';
         }
         if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), $nonce_action ) ) {
@@ -1034,6 +1034,34 @@ function fpp_check_admin_post() {
                         }
                     }
                     break;
+                case 'fpp_regen_image':
+                    $id = $_POST['fpp_photo_id'];
+                    $photo = $wpdb->get_row("select * from $fpp_photos where id = ". intval($id). ";");
+                    if ($photo) {
+                        fpp_generate_display_image($photo);
+                    }
+                    break;
+                case 'fpp_collect_meta':
+                    $id = $_POST['fpp_photo_id'];
+                    $photo = $wpdb->get_row("select * from $fpp_photos where id = ". intval($id). ";");
+                    if ($photo) {
+
+                        $filename = $photo->file_name;
+                        $path = fpp_photos_dir($photo->station_id);
+                        $filepath = $path . "/" . $filename;
+                        $metadata = exif_read_data( $filepath );
+                        $wpdb->update(
+                            $fpp_photos,
+                            array('metadata' => json_encode($metadata)),
+                            array('id' => intval($id)),
+                            array('%s'),
+                            array('%d')
+                        );
+                    }
+                    break;
+                default:
+                    echo "unknown action $action";
+                    exit();
             }
             fpp_in_place_redirect();
         }

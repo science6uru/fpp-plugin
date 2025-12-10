@@ -5,6 +5,7 @@ class PhotosAdminTable extends WP_List_Table
 	private $basedir;
 	private $nonce_field;
 	private $current_status;
+	private $super_admin;
 	
 	public function __construct($station_id)
 	{
@@ -12,6 +13,7 @@ class PhotosAdminTable extends WP_List_Table
 		$this->basedir = fpp_photos_uri($station_id);
 		$this->station_id = $station_id;
 		$this->current_status = $_GET['status'] ?? 'unreviewed';
+		$this->super_admin = array_key_exists('fpp-admin', $_GET);
 		
 		parent::__construct([
 			'singular' => 'photo', // singular name of the listed records
@@ -38,8 +40,11 @@ class PhotosAdminTable extends WP_List_Table
 			'metadata' => "Metadata",
 		];
 		
-		// only when filtering by rejected status
-		if ($this->current_status === 'rejected') {
+		if ($this->super_admin) {
+			$columns['operations'] = 'Operations';
+		}
+		// only when filtering by rejected status or super admin
+		if ($this->current_status === 'rejected' || $this->super_admin) {
 			$columns['delete'] = 'Delete';
 		}
 		
@@ -91,6 +96,15 @@ class PhotosAdminTable extends WP_List_Table
 				return "<input type='checkbox'/>";
 			case 'metadata':
 				return "<textarea readonly style='height:200px;'>".($item[$column_name]?json_encode(json_decode($item[$column_name]), JSON_PRETTY_PRINT) : "")."</textarea>";
+			case 'operations':
+				$id = $item["id"];
+				$nonce = $this->nonce_field;
+				$regen_disabled = $item['image_2000'] ? "disabled" : "";
+				$meta_disabled = $item['metadata'] ? "disabled" : "";
+				$regen_image = "<button name='action' $regen_disabled class='button button-secondary' value='fpp_regen_image'>Create Image</button>";
+				$capture_meta = "<button name='action' $meta_disabled class='button button-secondary' value='fpp_collect_meta'>Capture Meta</button>";
+				$id_field = "<input name='fpp_photo_id' hidden value='$id'/>";
+				return "<form method='post'>$nonce $regen_image $capture_meta $id_field </form>";
 			default:
 				return print_r($item, true); // Show the whole array for troubleshooting purposes
 		}
