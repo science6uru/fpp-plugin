@@ -103,8 +103,9 @@ class PhotosAdminTable extends WP_List_Table
 				$meta_disabled = $item['metadata'] ? "disabled" : "";
 				$regen_image = "<button name='action' $regen_disabled class='button button-secondary' value='fpp_regen_image'>Create Image</button>";
 				$capture_meta = "<button name='action' $meta_disabled class='button button-secondary' value='fpp_collect_meta'>Capture Meta</button>";
+				$capture_taken = "<button name='action' class='button button-secondary' value='fpp_set_taken'>Set Taken Time</button>";
 				$id_field = "<input name='fpp_photo_id' hidden value='$id'/>";
-				return "<form method='post'>$nonce $regen_image $capture_meta $id_field </form>";
+				return "<form method='post'>$nonce $regen_image $capture_meta $capture_taken $id_field </form>";
 			default:
 				return print_r($item, true); // Show the whole array for troubleshooting purposes
 		}
