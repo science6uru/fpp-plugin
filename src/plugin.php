@@ -35,30 +35,30 @@ function fpp_register_scripts() {
         'fpp_common',
         plugins_url( '/js/common.js', __FILE__ ),
         ['jquery'],
-        false,             // Version number
+        '1.0',             // Version number
         true               // Load in the footer (recommended for performance)
     );
     wp_register_script(
         'fpp_upload',
         plugins_url( '/js/fpp_upload.js', __FILE__ ),
         $fpp_upload_dependencies,
-        false,             // Version number
+        '1.0',             // Version number
         true               // Load in the footer (recommended for performance)
     );
     wp_register_script(
         'fpp_carousel',
         plugins_url( '/js/fpp_carousel.js', __FILE__ ),
         $fpp_carousel_dependencies,
-        false,             // Version number
+        '1.0',             // Version number
         true               // Load in the footer (recommended for performance)
     );
 
 
     wp_localize_script( 'fpp_upload', 'php_vars', $fpp_upload_data );
 
-    wp_register_style('fpp_common', plugins_url(  "css/common.css", __FILE__ ));
-    wp_register_style('fpp_upload', plugins_url(  "css/fpp_upload.css", __FILE__ ), ["fpp_common"]);
-    wp_register_style('fpp_carousel', plugins_url(  "css/fpp_carousel.css", __FILE__ ), ["fpp_common"]);
+    wp_register_style('fpp_common', plugins_url(  "css/common.css", __FILE__ ), [], '1.0');
+    wp_register_style('fpp_upload', plugins_url(  "css/fpp_upload.css", __FILE__ ), ["fpp_common"], '1.0');
+    wp_register_style('fpp_carousel', plugins_url(  "css/fpp_carousel.css", __FILE__ ), ["fpp_common"], '1.0');
 
 }
 add_action( 'wp_enqueue_scripts', 'fpp_register_scripts' );
