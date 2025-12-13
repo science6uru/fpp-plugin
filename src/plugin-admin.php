@@ -873,9 +873,9 @@ function fpp_photo_file_path($station_id, $filename) {
 
 function fpp_check_admin_post() {
     global $wpdb, $fpp_stations, $fpp_photos;
-    if (isset($_POST['action']) && in_array($_POST['action'] , ['add_station', 'update_station', 'delete_station', 'update_station_upload_slug', 'fpp_photo_delete', 'fpp_photo_update_status', 'fpp_regen_image', 'fpp_collect_meta'])) {
+    if (isset($_POST['action']) && in_array($_POST['action'] , ['add_station', 'update_station', 'delete_station', 'update_station_upload_slug', 'fpp_photo_delete', 'fpp_photo_update_status', 'fpp_regen_image', 'fpp_collect_meta', 'fpp_set_taken'])) {
         $nonce_action = "fpp_stations_nonce";
-        if (in_array($_POST['action'], ['fpp_photo_update_status', 'fpp_photo_delete', 'fpp_regen_image', 'fpp_collect_meta'])) {
+        if (in_array($_POST['action'], ['fpp_photo_update_status', 'fpp_photo_delete', 'fpp_regen_image', 'fpp_collect_meta', 'fpp_set_taken'])) {
             $nonce_action = 'fpp_photo_manage';
         }
         if ( ! isset( $_POST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ), $nonce_action ) ) {
@@ -1057,6 +1057,37 @@ function fpp_check_admin_post() {
                             array('%s'),
                             array('%d')
                         );
+                    }
+                    break;
+                case 'fpp_set_taken':
+                    $id = $_POST['fpp_photo_id'];
+                    $photo = $wpdb->get_row("select * from $fpp_photos where id = ". intval($id). ";");
+                    if ($photo) {
+
+                        $filename = $photo->file_name;
+                        $path = fpp_photos_dir($photo->station_id);
+                        $filepath = $path . "/" . $filename;
+                        $metadata = exif_read_data( $filepath );
+                        $taken_time = null;
+                        try {
+                            if (isset($metadata['created_timestamp']) && $metadata['created_timestamp'] != "0" && filter_var($metadata['created_timestamp'], FILTER_VALIDATE_INT) !== false) {
+                                $taken_time = gmdate('Y-m-d H:i:s', intval($metadata['created_timestamp']));
+                            } else if (isset($metadata['DateTimeOriginal'])) {
+                                $taken_time = $metadata['DateTimeOriginal'];
+                            }
+                            if ($taken_time) {
+                                $wpdb->update(
+                                    $fpp_photos,
+                                    array('taken' => $taken_time),
+                                    array('id' => intval($photo->id)),
+                                    array('%s'),
+                                    array('%d')
+                                );
+                            }
+                        } catch (Exception $e) {
+                            fpp_write_log($e->getMessage());
+                        }
+
                     }
                     break;
                 default:
