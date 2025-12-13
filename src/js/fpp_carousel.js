@@ -135,7 +135,7 @@
                 var dist = 200;
                 for (let i = 0; i < player.photolog.length; i++) {
                     const photoDist = Math.abs(player.photolog[i].photo.timeline_pos - timeline_pos);
-                    if (photoDist < dist) {
+                    if (photoDist <= dist) {
                         dist = photoDist;
                     } else if (i > 0) {
                         player.skip(i-1);
