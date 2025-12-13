@@ -32,7 +32,7 @@ function fpp_admin_scripts($hook) {
         'fpp-admin-js', 
         plugins_url( '/js/admin.js', __FILE__ ),
         ['jquery'], 
-        false,
+        '1.0',
         true
     );
 }

@@ -33,7 +33,6 @@
                 if (v3Token) {
                     // console.log("verifying: "+v3Token);
                     const verificationResult = await verifyV3Score(v3Token);
-                    console.log("here");
                     if (verificationResult.success) {
                         document.getElementById('g-recaptcha-response').value = v3Token;
                         $("#g-recaptcha-score-v3").val(verificationResult.data.score);
@@ -184,7 +183,7 @@
     window.onRecaptchaLoad = function() {
         // reCAPTCHA loaded, ready for use
         if(!recaptchaVerified && $("#file-upload").length) {
-            console.log("recaptcha loaded");
+            // console.log("recaptcha loaded");
             performRecaptchaVerification();
         }
     };

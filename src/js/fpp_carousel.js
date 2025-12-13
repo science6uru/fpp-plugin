@@ -201,7 +201,7 @@
             if (!this.head.next.lowres) {
                 return;
             }
-            this.head.hide();
+            let prev = this.head;
             this.head = this.head.next;
             this.caption.innerHTML = this.head.timestamp;
             this.tail.load();
@@ -209,6 +209,7 @@
             this.head.show();
             this.cursor.style = "left:"+(this.head.photo.timeline_pos)+"%";
             this.cursorbar.style = "width:"+(this.head.photo.timeline_pos)+"%";
+            prev.hide();
         }
         back() {
             if (!this.head) {
