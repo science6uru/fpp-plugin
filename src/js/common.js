@@ -10,6 +10,8 @@ class PhotologModal {
 }
 
 (function($) {
+    // append to end of body to ensure it can be placed above all other page elements
+    $(".fpp_modal").appendTo($("body"));
     $(".fpp_modal").each(function() {
         let self = $(this);
         $(this).find(".close-btn").on("click", function () {
