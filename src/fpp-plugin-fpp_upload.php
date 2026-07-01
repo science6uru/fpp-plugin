@@ -23,7 +23,7 @@ $v2_site_key = get_option('fpp_recaptcha_v2_site_key');
             $today_start,
             $today_end
           ));
-          
+
           $month_start = date('Y-m-01 00:00:00');
           $month_end = date('Y-m-t 23:59:59');
           $month_upload_count = $wpdb->get_var($wpdb->prepare(
@@ -38,27 +38,31 @@ $v2_site_key = get_option('fpp_recaptcha_v2_site_key');
       <div class="card">
         <h3>Photo Uploaded Successfully</h3>
         <div class="drop_box">
-
           <header>
             <h4>Thank you for your submission!</h4>
           </header>
           <p>Your photo will be added to our timelapse once it has been approved.</p>
           <?php if ($upload_count): ?>
             <p style="margin-top: 10px; font-size: 0.8em; opacity: 0.8;">
-              <?php 
+              <?php
               $today_ordinal = $upload_count . (
-                $upload_count % 10 === 1 && $upload_count % 100 !== 11 ? "st" : (
-                $upload_count % 10 === 2 && $upload_count % 100 !== 12 ? "nd" : (
-                $upload_count % 10 === 3 && $upload_count % 100 !== 13 ? "rd" : "th"
+                $upload_count % 10 === 1 && $upload_count % 100 !== 11 ? 'st' : (
+                $upload_count % 10 === 2 && $upload_count % 100 !== 12 ? 'nd' : (
+                $upload_count % 10 === 3 && $upload_count % 100 !== 13 ? 'rd' : 'th'
               )));
-              
+
               $month_ordinal = $month_upload_count . (
-                $month_upload_count % 10 === 1 && $month_upload_count % 100 !== 11 ? "st" : (
-                $month_upload_count % 10 === 2 && $month_upload_count % 100 !== 12 ? "nd" : (
-                $month_upload_count % 10 === 3 && $month_upload_count % 100 !== 13 ? "rd" : "th"
+                $month_upload_count % 10 === 1 && $month_upload_count % 100 !== 11 ? 'st' : (
+                $month_upload_count % 10 === 2 && $month_upload_count % 100 !== 12 ? 'nd' : (
+                $month_upload_count % 10 === 3 && $month_upload_count % 100 !== 13 ? 'rd' : 'th'
               )));
-              
-              echo "You are the " . $today_ordinal . " contributor today, and the " . $month_ordinal . " this month!";
+
+              $engagement_message = sprintf(
+                'You are the %s contributor today, and the %s this month!',
+                $today_ordinal,
+                $month_ordinal
+              );
+              echo esc_html($engagement_message);
               ?>
             </p>
           <?php endif; ?>

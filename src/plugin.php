@@ -59,7 +59,7 @@ function fpp_register_scripts() {
     wp_register_style('fpp_common', plugins_url(  "css/common.css", __FILE__ ), [], '1.0');
     wp_register_style('fpp_upload', plugins_url(  "css/fpp_upload.css", __FILE__ ), ["fpp_common"], '1.0');
     wp_register_style('fpp_carousel', plugins_url(  "css/fpp_carousel.css", __FILE__ ), ["fpp_common"], '1.0');
-
+    
 }
 add_action( 'wp_enqueue_scripts', 'fpp_register_scripts' );
 add_action( 'admin_enqueue_scripts', 'fpp_register_scripts' );
